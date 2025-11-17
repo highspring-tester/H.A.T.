@@ -1,0 +1,30 @@
+This file tells Git which files and folders to ignore.
+
+Dependencies
+
+node_modules/
+
+Environment variables
+
+DO NOT commit this file - it contains secrets!
+
+.env
+
+Firebase Service Account Key (if you were using it)
+
+Also a secret file, do not commit!
+
+serviceAccountKey.json
+
+macOS system files
+
+.DS_Store
+
+IDE configuration
+
+.vscode/
+.idea/
+
+Log files
+
+*.log

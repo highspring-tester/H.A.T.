@@ -1,0 +1,19 @@
+{
+  "name": "highspring-unified-portal",
+  "version": "1.0.0",
+  "description": "Unified Assessment, Enrollment, and Quizzer admin portal.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.4.1",
+    "nodemailer": "^6.9.13",
+    "uuid": "^9.0.1",
+    "bcryptjs": "^2.4.3"
+  }
+}
