@@ -7,45 +7,67 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/styles.css"> <!-- LINK TO MASTER STYLESHEET -->
 </head>
-<body class="flex items-center justify-center min-h-screen p-4" id="test-login-view">
+<body class="flex items-center justify-center min-h-screen p-0">
 
-  <div id="app-container-test" class="w-full max-w-4xl mx-auto">
-    <!-- Login View -->
-    <div id="test-card" class="card p-8 rounded-xl shadow-lg transition-all">
-      <img class="mx-auto h-24 w-auto mb-6 filter brightness-0 invert" src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Highspring Logo">
-      <h1 class="text-3xl font-bold dark-text mb-2 text-center">Assessment Login</h1>
-      <p class="mid-text mb-6 text-center">Please enter your credentials to begin the test.</p>
-      <div class="space-y-4">
-        <div>
-          <label for="test-username" class="block text-sm font-medium mid-text">Username</label>
-          <input type="text" id="test-username" class="input-field mt-1 block w-full px-3 py-2 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 sm:text-sm">
-        </div>
-        <div>
-          <label for="test-password" class="block text-sm font-medium mid-text">Password</label>
-          <input type="password" id="test-password" class="input-field mt-1 block w-full px-3 py-2 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 sm:text-sm">
-        </div>
+  <div id="loginView" class="view active">
+    <div class="card">
+      <div class="card-header">
+        <img class="card-logo" src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Highspring Logo">
+        <h1>Assessment Login</h1>
+        <p class="text-gray-500" style="margin-top: 10px; color: var(--admin-text-color);">Please enter your credentials to begin the test.</p>
       </div>
-      <p id="test-login-error" class="text-red-400 text-sm mt-4 text-center hidden"></p>
-      <button id="test-login-btn" class="mt-6 w-full text-white font-bold py-3 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-        <span class="btn-text">Login</span>
-        <div class="loader"></div>
-      </button>
-       <div id="test-loader" class="mt-4 text-center hidden">
-          <svg class="animate-spin h-5 w-5 text-green-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0-0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 80 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p class="text-sm mid-text mt-2">Verifying...</p>
+      <div class="card-body">
+        <div id="login-message" class="message-box"></div>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" class="input-field" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="input-field" required>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer">
+        <button type="submit" form="loginForm" id="loginButton" class="btn btn-primary">
+          <span class="btn-text">Login</span>
+          <div class="loader"></div>
+        </button>
       </div>
     </div>
   </div>
 
   <script>
+    // --- Global Variables and Selectors ---
     const API_URL = ''; // Relative path
-    const LOGIN_BTN = document.getElementById('test-login-btn');
-    const LOADER = document.getElementById('test-loader');
-    const LOGIN_ERROR = document.getElementById('test-login-error');
+    const LOGIN_BUTTON = document.getElementById('loginButton');
+    const LOGIN_FORM = document.getElementById('loginForm');
+    const MESSAGE_BOX = document.getElementById('login-message');
+    const USERNAME_INPUT = document.getElementById('username');
+    const PASSWORD_INPUT = document.getElementById('password');
+
+    // --- Helper Functions ---
+
+    function toggleButtonLoading(button, isLoading) {
+      if (button) {
+        button.disabled = isLoading;
+        button.classList.toggle('loading', isLoading);
+      }
+    }
+
+    function showMessage(message, type) {
+      MESSAGE_BOX.textContent = message;
+      MESSAGE_BOX.className = 'message-box ' + type;
+      MESSAGE_BOX.style.display = message ? 'block' : 'none';
+    }
     
+    function hideMessage() {
+        MESSAGE_BOX.style.display = 'none';
+    }
+
+    // --- Core Logic ---
+
     // Check for existing token and redirect if test is in progress
     document.addEventListener('DOMContentLoaded', () => {
         const token = localStorage.getItem('testTakerToken');
@@ -55,39 +77,23 @@
             window.location.href = `/${page}`; 
         } else {
             // Enable button text and remove loading classes if no token is found
-            LOGIN_BTN.disabled = false;
-            LOGIN_BTN.classList.remove('loading', 'opacity-50', 'cursor-not-allowed');
-            LOGIN_BTN.querySelector('.btn-text').textContent = 'Login';
+            toggleButtonLoading(LOGIN_BUTTON, false);
+            LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
         }
-        if (LOGIN_BTN) {
-            LOGIN_BTN.addEventListener('click', handleLogin);
+        if (LOGIN_FORM) {
+            LOGIN_FORM.addEventListener('submit', handleLoginSubmit);
         }
     });
 
-    function showLoader(isLoading) {
-        LOGIN_BTN.disabled = isLoading;
-        LOGIN_BTN.classList.toggle('loading', isLoading);
-        LOGIN_BTN.classList.toggle('opacity-50', isLoading);
-        LOGIN_BTN.classList.toggle('cursor-not-allowed', isLoading);
-        LOADER.classList.toggle('hidden', !isLoading);
-        LOGIN_ERROR.classList.add('hidden');
-    }
-
-    function showError(message) {
-        LOGIN_ERROR.textContent = message;
-        LOGIN_ERROR.classList.remove('hidden');
-    }
-
-    async function handleLogin() {
-        const usernameInput = document.getElementById('test-username');
-        const passwordInput = document.getElementById('test-password');
+    // --- Event Handler ---
+    async function handleLoginSubmit(e) {
+        e.preventDefault();
         
-        if (!usernameInput.value || !passwordInput.value) {
-            showError('Please enter both username and password.');
-            return;
-        }
+        hideMessage();
+        toggleButtonLoading(LOGIN_BUTTON, true);
 
-        showLoader(true);
+        const username = USERNAME_INPUT.value;
+        const password = PASSWORD_INPUT.value;
         
         try {
             // CRITICAL: Call the correct Test-Taker specific API route
@@ -95,8 +101,8 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    username: usernameInput.value, 
-                    password: passwordInput.value 
+                    username: username, 
+                    password: password 
                 })
             });
 
@@ -119,9 +125,9 @@
 
         } catch (error) {
             // This is where errors like "Test already attempted" or "Invalid credentials" land
-            showError(error.message || 'Login failed: Network error.');
-            showLoader(false);
-            LOGIN_BTN.querySelector('.btn-text').textContent = 'Login';
+            showMessage(error.message || 'Login failed: Network error.', 'error');
+            toggleButtonLoading(LOGIN_BUTTON, false);
+            LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
         }
     }
   </script>
