@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Highspring || TA Portal</title>
-    <!-- Load Tailwind CSS for modern styling and responsiveness -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/styles.css"> <!-- LINK TO MASTER STYLESHEET -->
+  <title>Highspring || TA Portal</title>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Link to your master stylesheet -->
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="flex items-center justify-center min-h-screen p-0">
 
@@ -20,8 +19,9 @@
         <div id="login-message" class="message-box"></div>
         <form id="loginForm">
           <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" class="input-field" required>
+            <!-- Your backend route for this app expects an email -->
+            <label for="username">Email</label>
+            <input type="email" id="username" class="input-field" required>
           </div>
           <div class="form-group">
             <label for="password">Password</label>
@@ -38,89 +38,51 @@
     </div>
   </div>
 
-  <div id="dashboardView" style="display:none;" class="p-8 w-full max-w-lg mx-auto">
-      <!-- Placeholder for the dashboard content after successful login -->
-      <div class="bg-white p-6 rounded-lg shadow-lg">
-          <h2 id="welcomeMsg" class="text-2xl font-bold text-gray-800 mb-4">Welcome!</h2>
-          <p class="text-gray-600 mb-4">You have successfully logged in to the Enrollment Portal.</p>
-          <div id="userDetails" class="space-y-2 text-gray-700"></div>
-          <button onclick="logout()" class="mt-6 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Logout</button>
-      </div>
-  </div>
-
   <script>
-    // --- Global Variables and Selectors ---
-    const API_URL = ''; // Use a relative path for Codespaces
+    // --- Global Variables & Selectors ---
+    const API_URL = ''; // Relative path
     const LOGIN_BUTTON = document.getElementById('loginButton');
     const LOGIN_FORM = document.getElementById('loginForm');
     const MESSAGE_BOX = document.getElementById('login-message');
-    const USERNAME_INPUT = document.getElementById('username');
+    const USERNAME_INPUT = document.getElementById('username'); // This is the email field
     const PASSWORD_INPUT = document.getElementById('password');
 
-    // --- Helper Functions (Adapted from your original structure) ---
+    // --- Helper Functions (from your original file) ---
 
     function toggleButtonLoading(button, isLoading) {
-      if (button) {
-        button.disabled = isLoading;
-        button.classList.toggle('loading', isLoading);
+      const text = button.querySelector('.btn-text');
+      const loader = button.querySelector('.loader');
+      if (isLoading) {
+        text.style.visibility = 'hidden';
+        loader.style.display = 'block';
+        button.disabled = true;
+      } else {
+        text.style.visibility = 'visible';
+        loader.style.display = 'none';
+        button.disabled = false;
       }
     }
 
-    function showMessage(message, type) {
-      MESSAGE_BOX.textContent = message;
-      MESSAGE_BOX.className = 'message-box ' + type;
-      MESSAGE_BOX.style.display = message ? 'block' : 'none';
+    function showMessage(boxId, message, type) {
+      const box = document.getElementById(boxId);
+      box.textContent = message;
+      box.className = 'message-box ' + type;
+      box.style.display = 'block';
     }
     
-    function hideMessage() {
-        MESSAGE_BOX.style.display = 'none';
+    function hideMessage(boxId) {
+        document.getElementById(boxId).style.display = 'none';
     }
 
-    // --- Core Logic ---
-
-    function checkLoginState() {
-        const token = localStorage.getItem('enrollmentToken');
-        const user = JSON.parse(localStorage.getItem('enrollmentUser'));
-
-        if (token && user) {
-            renderDashboard(user);
-        } else {
-            document.getElementById('loginView').style.display = 'flex';
-            document.getElementById('dashboardView').style.display = 'none';
-            toggleButtonLoading(LOGIN_BUTTON, false); // Enable button if no token found
-            LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
-        }
-    }
-
-    function logout() {
-        localStorage.removeItem('enrollmentToken');
-        localStorage.removeItem('enrollmentUser');
-        // Reloading the page will trigger checkLoginState() to show the form
-        window.location.reload(); 
-    }
-
-    function renderDashboard(user) {
-        document.getElementById('loginView').style.display = 'none';
-        document.getElementById('dashboardView').style.display = 'block';
-        
-        document.getElementById('welcomeMsg').textContent = `Welcome, ${user.fullName}!`;
-        document.getElementById('userDetails').innerHTML = `
-            <p><span class="font-semibold">Role:</span> ${user.role}</p>
-            <p><span class="font-semibold">Email:</span> ${user.email}</p>
-        `;
-        // In a real app, you would dynamically load the TA/Manager/Owner view here
-        // For now, this is a successful login placeholder.
-    }
-
-    // --- Event Handler ---
-
+    // --- NEW Event Handler ---
+    
     async function handleLoginSubmit(e) {
         e.preventDefault();
         
-        hideMessage();
+        hideMessage('login-message');
         toggleButtonLoading(LOGIN_BUTTON, true);
 
-        const email = USERNAME_INPUT.value; // Your App Script used 'username' for the email
+        const email = USERNAME_INPUT.value; // Get email from the input
         const password = PASSWORD_INPUT.value;
         
         try {
@@ -135,32 +97,64 @@
 
             if (response.ok) {
                 // --- SUCCESS ---
-                showMessage('Login successful! Loading dashboard...', 'success');
+                showMessage('login-message', 'Login successful! Redirecting...', 'success');
                 
                 // Store the token and user data with an Enrollment-specific key
                 localStorage.setItem('enrollmentToken', data.accessToken);
                 localStorage.setItem('enrollmentUser', JSON.stringify(data.user));
                 
-                setTimeout(() => {
-                    renderDashboard(data.user);
-                }, 800);
+                // Redirect to the correct dashboard based on role
+                switch (data.user.role) {
+                    case 'TA':
+                        window.location.href = window.location.origin + '/enrollment/ta';
+                        break;
+                    case 'Manager':
+                        window.location.href = window.location.origin + '/enrollment/manager'; // We will build this next
+                        break;
+                    case 'Owner':
+                        window.location.href = window.location.origin + '/enrollment/owner'; // And this one after
+                        break;
+                    default:
+                        showMessage('login-message', 'Login successful, but role is unknown.', 'error');
+                }
 
             } else {
                 // --- FAILED ---
-                throw new Error(data.error || 'Invalid username or password.');
+                throw new Error(data.error || 'Invalid email or password.');
             }
 
         } catch (error) {
             // --- ERROR ---
-            showMessage(error.message || 'Login failed: Network error.', 'error');
+            showMessage('login-message', error.message, 'error');
             toggleButtonLoading(LOGIN_BUTTON, false);
-            LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
         }
     }
 
     // --- Initializer ---
     document.addEventListener('DOMContentLoaded', () => {
-        checkLoginState();
+        // Check if user is already logged in (e.g., from a previous session)
+        const token = localStorage.getItem('enrollmentToken');
+        const user = JSON.parse(localStorage.getItem('enrollmentUser'));
+
+        if (token && user) {
+            // If already logged in, redirect them immediately
+            switch (user.role) {
+                case 'TA':
+                    window.location.href = window.location.origin + '/enrollment/ta';
+                    break;
+                case 'Manager':
+                    window.location.href = window.location.origin + '/enrollment/manager';
+                    break;
+                case 'Owner':
+                    window.location.href = window.location.origin + '/enrollment/owner';
+                    break;
+            }
+        } else {
+            // Not logged in, so enable the login button
+            toggleButtonLoading(LOGIN_BUTTON, false);
+        }
+
+        // Add the listener to the form
         if (LOGIN_FORM) {
             LOGIN_FORM.addEventListener('submit', handleLoginSubmit);
         }

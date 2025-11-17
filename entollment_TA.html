@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Highspring || Candidate Registration</title>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- 
+    SECURITY GUARD SCRIPT
+    This script runs first. It checks if the user is logged in.
+    If not, it redirects them to the login page.
+  -->
+  <script>
+    const enrollmentToken = localStorage.getItem('enrollmentToken');
+    const enrollmentUser = JSON.parse(localStorage.getItem('enrollmentUser'));
+    
+    // If no token, or if the user is not a TA, redirect to login
+    if (!enrollmentToken || !enrollmentUser) {
+      window.location.href = '/enrollment';
+    } else if (enrollmentUser.role !== 'TA') {
+      // If a Manager or Owner logs in, they shouldn't see the TA page.
+      // We'll redirect them to their own dashboard (once we build it).
+      // For now, we'll just log them out or send to login.
+      localStorage.removeItem('enrollmentToken');
+      localStorage.removeItem('enrollmentUser');
+      window.location.href = '/enrollment';
+    }
+  </script>
+
+  <div class="top-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <img class="logo" src="https://image2url.com/images/1760988092284-e4525e59-5d99-49ec-bbd8-bbe546f96de6.png" alt="Company Logo" style="height: 40px;">
+      <div class="text-xl font-bold text-gray-800"style="font-size: 24px;"><strong>Candidate Enrollment Form</strong></div>
+    </div>
+    <button onclick="logout()" class="btn logout-btn">Logout</button>
+  </div>
+
+  <div class="app-container">
+    <div class="sidebar">
+      <br>
+      <div class="sidebar-header">Menu</div>
+      <div class="nav-item active" onclick="showView('onboardCandidateView', this)">Enroll New Candidate</div>
+    </div>
+
+    <div class="main-content">
+      <!-- Onboard Candidate Form View -->
+      <div id="onboardCandidateView" class="content-view active">
+        <div class="view-header">
+            <h2>Enroll New Candidate</h2>
+        </div>
+        <div id="candidate-message" class="message-box"></div>
+        <form id="onboardCandidateForm">
+          <div class="form-group"><label for="ta-name-ta">TA Full Name</label><input type="text" id="ta-name-ta" class="input-field" required></div>
+          <div class="form-group"><label for="ta-email-ta">TA Mail</label><input type="text" id="ta-email-ta" class="input-field" required></div>
+          <div class="form-group"><label for="candidate-fname-ta">First Name</label><input type="text" id="candidate-fname-ta" class="input-field" required></div>
+          <div class="form-group"><label for="candidate-lname-ta">Last Name</label><input type="text" id="candidate-lname-ta" class="input-field" required></div>
+          <div class="form-group"><label for="candidate-email-ta">Email Address</label><input type="email" id="candidate-email-ta" class="input-field" required></div>
+          <div class="form-group"><label for="candidate-contact-ta">Contact Number</label><input type="text" id="candidate-contact-ta" class="input-field" required></div>
+          
+          <!-- Modified Fields -->
+          <div class="form-group">
+            <label for="program-ta">Program</label>
+            <select id="program-ta" class="input-field" required>
+              <option value="" disabled selected>Loading programmes...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="project-ta">Project</label>
+            <select id="project-ta" class="input-field" required disabled>
+              <option value="" disabled selected>Please select a programme first</option>
+            </select>
+          </div>
+          <!-- End Modified Fields -->
+
+          <button type="submit" form="onboardCandidateForm" class="btn btn-primary"><span class="btn-text">Enroll Candidate</span><div class="loader"></div></button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Global Variables (from security script) ---
+    // enrollmentToken
+    // enrollmentUser
+    const API_URL = ''; // Relative path
+    let programmeData = {}; 
+    let taFullName = ''; 
+    let taEmail = '';    
+
+    // --- Helper Functions ---
+    function showView(viewId, element) {
+      document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      if (element) {
+        element.classList.add('active');
+      }
+    }
+
+    function logout() {
+      // Clear the login token and redirect to the login page
+      localStorage.removeItem('enrollmentToken');
+      localStorage.removeItem('enrollmentUser');
+      window.location.href = '/enrollment';
+    }
+    
+    function toggleButtonLoading(button, isLoading) {
+      const text = button.querySelector('.btn-text');
+      const loader = button.querySelector('.loader');
+      button.disabled = isLoading;
+      button.classList.toggle('loading', isLoading);
+    }
+
+    function showMessage(boxId, message, type) {
+      const box = document.getElementById(boxId);
+      box.textContent = message;
+      box.className = 'message-box ' + type;
+      box.style.display = 'block';
+      setTimeout(() => hideMessage(boxId), 5000); 
+    }
+    
+    function hideMessage(boxId) {
+        const box = document.getElementById(boxId); 
+        if(box) box.style.display = 'none';
+    }
+
+    /**
+     * Helper function to make authenticated API calls
+     */
+    async function fetchWithAuth(url, options = {}) {
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${enrollmentToken}`
+        };
+        if (options.body) {
+            headers['Content-Type'] = 'application/json';
+        }
+        
+        const response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401 || response.status === 403) {
+            // Token is invalid or expired
+            logout();
+        }
+        
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'API request failed');
+        }
+        return data;
+    }
+
+    // --- Page Initialization ---
+    document.addEventListener('DOMContentLoaded', async function() {
+        // 1. Get TA Details
+        try {
+            // Use the data stored in localStorage from the login
+            taFullName = enrollmentUser.fullName; 
+            taEmail = enrollmentUser.email;     
+            document.getElementById('ta-name-ta').value = taFullName;
+            document.getElementById('ta-email-ta').value = taEmail;
+        } catch (error) {
+            console.error(error);
+            showMessage('candidate-message', 'Could not auto-fill your details. Please enter them manually.', 'error');
+        }
+
+        // 2. Get Programme Data
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/programmes`);
+            if (res.success) {
+                programmeData = res.data;
+                populateProgrammeDropdown(res.data, 'program-ta'); 
+            } else {
+                throw new Error(res.message);
+            }
+        } catch (error) {
+            showMessage('candidate-message', 'Could not load programme list: ' + error.message, 'error');
+            document.getElementById('program-ta').innerHTML = '<option value="" disabled selected>Error loading programmes</option>';
+        }
+
+        // 3. Add Form Submit Listener
+        document.getElementById('onboardCandidateForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            hideMessage('candidate-message');
+            const button = e.target.querySelector('button[type="submit"]');
+            toggleButtonLoading(button, true);
+
+            const candidateData = {
+                // taName and taEmail are sent via token, but we get them from form
+                // in case they were manually changed. Backend will use token's info.
+                firstName: document.getElementById('candidate-fname-ta').value,
+                lastName: document.getElementById('candidate-lname-ta').value,
+                email: document.getElementById('candidate-email-ta').value,
+                contactNumber: document.getElementById('candidate-contact-ta').value,
+                program: document.getElementById('program-ta').value,
+                project: document.getElementById('project-ta').value
+            };
+            
+            try {
+                const res = await fetchWithAuth(`${API_URL}/api/enrollment/candidates/onboard`, {
+                    method: 'POST',
+                    body: JSON.stringify(candidateData)
+                });
+                
+                showMessage('candidate-message', res.message, res.success ? 'success' : 'error');
+                if (res.success) {
+                  e.target.reset(); // This clears all fields
+                  // Re-populate the TA fields
+                  document.getElementById('ta-name-ta').value = taFullName;
+                  document.getElementById('ta-email-ta').value = taEmail;
+                }
+            } catch (err) {
+                showMessage('candidate-message', 'Operation failed: ' + err.message, 'error');
+            } finally {
+                toggleButtonLoading(button, false);
+            }
+        });
+
+        // 4. Add Dropdown Change Listener
+        document.getElementById('program-ta').addEventListener('change', function() {
+            const selectedProgram = this.value;
+            const projectDropdown = document.getElementById('project-ta'); 
+            
+            projectDropdown.innerHTML = '';
+            
+            if (selectedProgram && programmeData[selectedProgram] && programmeData[selectedProgram].length > 0) {
+                projectDropdown.disabled = false;
+                projectDropdown.innerHTML = '<option value="" disabled selected>Select a project</option>';
+                
+                programmeData[selectedProgram].forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project;
+                    option.textContent = project;
+                    projectDropdown.appendChild(option);
+                });
+            } else if (selectedProgram) {
+                projectDropdown.disabled = true;
+                projectDropdown.innerHTML = '<option value="" disabled selected>No projects for this programme</option>';
+            }
+            else {
+                projectDropdown.disabled = true;
+                projectDropdown.innerHTML = '<option value="" disabled selected>Please select a programme first</option>';
+            }
+        });
+    });
+
+    function populateProgrammeDropdown(data, dropdownId) {
+        const programDropdown = document.getElementById(dropdownId);
+        programDropdown.innerHTML = '<option value="" disabled selected>Select a programme</option>'; 
+        
+        const programs = Object.keys(data).sort();
+        programs.forEach(program => {
+            const option = document.createElement('option');
+            option.value = program;
+            option.textContent = program;
+            programDropdown.appendChild(option);
+        });
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TA Portal || Manager Dashboard</title>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- 
+    SECURITY GUARD SCRIPT
+    This script runs first. It checks if the user is logged in.
+    If not, it redirects them to the login page.
+  -->
+  <script>
+    const enrollmentToken = localStorage.getItem('enrollmentToken');
+    const enrollmentUser = JSON.parse(localStorage.getItem('enrollmentUser'));
+    
+    // If no token, or if the role is not Manager or Owner, redirect.
+    if (!enrollmentToken || !enrollmentUser) {
+      window.location.href = '/enrollment';
+    } else if (enrollmentUser.role !== 'Manager' && enrollmentUser.role !== 'Owner') {
+      // If a TA somehow gets here, send them back to their dashboard.
+      if (enrollmentUser.role === 'TA') {
+        window.location.href = '/enrollment/ta';
+      } else {
+        localStorage.removeItem('enrollmentToken');
+        localStorage.removeItem('enrollmentUser');
+        window.location.href = '/enrollment';
+      }
+    }
+  </script>
+
+  <div class="top-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <img class="logo" src="https://image2url.com/images/1760988092284-e4525e59-5d99-49ec-bbd8-bbe546f96de6.png" alt="Company Logo" style="height: 40px;">
+      <div class="text-xl font-bold text-gray-800"style="font-size: 24px;"><strong>Enrollment Portal</strong></div>
+    </div>
+    <button onclick="logout()" class="btn logout-btn">Logout</button>
+  </div>
+
+  <div class="app-container">
+    <div class="sidebar">
+      <br>
+      <div class="sidebar-header">Menu</div>
+      <div class="nav-item active" onclick="showView('defaultView', this)">Home</div>
+      <div class="nav-item" onclick="showView('onboardTaView', this)">Onboard New TA</div>
+      <div class="nav-item" onclick="showView('onboardCandidateView', this)">Enroll New Candidate</div>
+      <div class="nav-item" onclick="showView('searchView', this)">Logs</div>
+    </div>
+
+    <div class="main-content">
+      <!-- Default Dashboard View -->
+      <div id="defaultView" class="content-view active">
+         <div class="default-content">
+            <img class="logo-large" src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Company Emblem">
+            <h2 id="welcome-message">Welcome!</h2>
+            <p>Select an option from the menu to get started.</p>
+        </div>
+      </div>
+
+      <!-- Onboard TA Form View -->
+      <div id="onboardTaView" class="content-view">
+        <div class="view-header">
+          <div class="back-arrow" onclick="showView('defaultView')">&#11013;</div>
+          <h2>Onboard New TA</h2>
+        </div>
+        <div id="ta-message" class="message-box"></div>
+        <form id="onboardTaForm">
+          <div class="form-group"><label for="ta-fname">First Name</label><input type="text" id="ta-fname" class="input-field" required></div>
+          <div class="form-group"><label for="ta-lname">Last Name</label><input type="text" id="ta-lname" class="input-field" required></div>
+          <div class="form-group"><label for="ta-email">Official Email Address</label><input type="email" id="ta-email" class="input-field" required></div>
+          <div class="form-group">
+            <label for="ta-role">Role</label>
+            <select id="ta-role" class="input-field" required>
+              <option value="TA">TA</option>
+              <option value="Manager">Manager</option>
+              <!-- Only an Owner can create another Owner -->
+              <option value="Owner" id="owner-role-option" style="display:none;">Owner</option>
+            </select>
+          </div>
+          <button type="submit" form="onboardTaForm" class="btn btn-primary"><span class="btn-text">Onboard TA</span><div class="loader"></div></button>
+        </form>
+      </div>
+
+      <!-- Onboard Candidate Form View -->
+      <div id="onboardCandidateView" class="content-view">
+        <div class="view-header">
+          <div class="back-arrow" onclick="showView('defaultView')">&#11013;</div>
+          <h2>Enroll New Candidate</h2>
+        </div>
+        <div id="candidate-message" class="message-box"></div>
+        <form id="onboardCandidateForm">
+          <!-- 
+            NOTE: TA Name and Email fields are removed.
+            The API automatically assigns the logged-in Manager (you) as the one onboarding the candidate.
+          -->
+          <div class="form-group"><label for="candidate-fname">First Name</label><input type="text" id="candidate-fname" class="input-field" required></div>
+          <div class="form-group"><label for="candidate-lname">Last Name</label><input type="text" id="candidate-lname" class="input-field" required></div>
+          <div class="form-group"><label for="candidate-email">Email Address</label><input type="email" id="candidate-email" class="input-field" required></div>
+          <div class="form-group"><label for="candidate-contact">Contact Number</label><input type="text" id="candidate-contact" class="input-field" required></div>
+          
+          <div class="form-group">
+            <label for="program">Program</label>
+            <select id="program" class="input-field" required>
+              <option value="" disabled selected>Loading programmes...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="project">Project</label>
+            <select id="project" class="input-field" required disabled>
+              <option value="" disabled selected>Please select a programme first</option>
+            </select>
+          </div>
+
+          <button type="submit" form="onboardCandidateForm" class="btn btn-primary"><span class="btn-text">Enroll Candidate</span><div class="loader"></div></button>
+        </form>
+      </div>
+      
+      <!-- Search View -->
+      <div id="searchView" class="content-view">
+        <div class="view-header">
+          <div class="back-arrow" onclick="showView('defaultView')">&#11013;</div>
+          <h2>Logs</h2>
+        </div>
+        <div id="search-message" class="message-box"></div>
+        
+        <!-- Member Search -->
+        <div class="search-section">
+          <h3>Search Members</h3>
+          <form id="memberSearchForm" class="filter-group">
+            <div class="member-search-grid">
+              <input type="text" id="memberSearchTerm" class="input-field" placeholder="Search by name or email...">
+              <select id="memberRoleFilter" class="input-field">
+                <option value="">All Roles</option>
+                <option value="Manager">Manager</option>
+                <option value="TA">TA</option>
+              </select>
+              <button type="submit" class="btn btn-primary"><span class="btn-text">Search</span><div class="loader"></div></button>
+            </div>
+          </form>
+          <div class="results-table-container">
+            <table class="results-table">
+              <thead><tr><th>Full Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead>
+              <tbody id="memberResultsBody"></tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Candidate Search -->
+        <div class="search-section">
+          <h3>Search Candidates</h3>
+          <form id="candidateSearchForm" class="filter-group">
+            <div class="candidate-search-grid">
+              <input type="text" id="candidateSearchTerm" class="input-field" placeholder="Search by name or email...">
+              <input type="date" id="candidateDateFilter" class="input-field">
+              <select id="candidateTaFilter" class="input-field"><option value="">All TAs</option></select>
+              <select id="candidateProgFilter" class="input-field"><option value="">All Programmes</option></select>
+              <button type="submit" class="btn btn-primary"><span class="btn-text">Search</span><div class="loader"></div></button>
+            </div>
+          </form>
+          <div class="results-table-container">
+            <table class="results-table">
+              <thead><tr><th>Date</th><th>Candidate Name</th><th>Email</th><th>Programme</th><th>TA Name</th><th>Status</th><th>Result</th><th>Action</th></tr></thead>
+              <tbody id="candidateResultsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Global Variables (from security script) ---
+    // enrollmentToken
+    // enrollmentUser
+    const API_URL = ''; // Relative path
+    let programmeData = {}; 
+
+    // --- Helper Functions ---
+
+    function showView(viewId, element) {
+      document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
+      const viewToShow = document.getElementById(viewId);
+      if (viewToShow) viewToShow.classList.add('active');
+
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      
+      if (element) {
+        element.classList.add('active');
+      } else if (viewId === 'defaultView') {
+        document.querySelector('.nav-item[onclick*="defaultView"]').classList.add('active');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('enrollmentToken');
+      localStorage.removeItem('enrollmentUser');
+      window.location.href = '/enrollment';
+    }
+    
+    function toggleButtonLoading(button, isLoading) {
+      button.disabled = isLoading;
+      button.classList.toggle('loading', isLoading);
+    }
+    
+    function showMessage(boxId, message, type) {
+      const box = document.getElementById(boxId);
+      box.textContent = message;
+      box.className = 'message-box ' + type;
+      box.style.display = 'block';
+      setTimeout(() => hideMessage(boxId), 5000);
+    }
+    
+    function hideMessage(boxId) {
+        const box = document.getElementById(boxId);
+        if(box) box.style.display = 'none';
+    }
+
+    /**
+     * Helper function to make authenticated API calls
+     */
+    async function fetchWithAuth(url, options = {}) {
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${enrollmentToken}`
+        };
+        if (options.body) {
+            headers['Content-Type'] = 'application/json';
+        }
+        
+        const response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Token is invalid or expired
+        }
+        
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'API request failed');
+        }
+        return data;
+    }
+
+    // --- Page Initialization ---
+    document.addEventListener('DOMContentLoaded', async function() {
+        if (enrollmentUser) {
+            document.getElementById('welcome-message').textContent = `Welcome, ${enrollmentUser.fullName}!`;
+            // Show "Owner" role option only if the logged-in user is an Owner
+            if (enrollmentUser.role === 'Owner') {
+                document.getElementById('owner-role-option').style.display = 'block';
+            }
+        }
+
+        // Fetch data for dropdowns
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/candidates/search`); // Empty search to get filters
+            if (res.success) {
+                populateDropdowns(res); // Pass the whole response
+            } else {
+                showMessage('search-message', 'Could not load filter options: ' + res.message, 'error');
+            }
+        } catch (error) {
+            showMessage('search-message', 'Could not load filter options: ' + error.message, 'error');
+        }
+
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/programmes`);
+            if (res.success) {
+                programmeData = res.data;
+                populateProgrammeDropdown(res.data, 'program'); 
+            } else {
+                showMessage('candidate-message', 'Could not load programme list: ' + res.message, 'error');
+            }
+        } catch (error) {
+            showMessage('candidate-message', 'Could not load programme list: ' + error.message, 'error');
+        }
+
+        // --- Event Listeners ---
+        
+        document.getElementById('onboardTaForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            hideMessage('ta-message');
+            const button = e.target.querySelector('button[type="submit"]');
+            toggleButtonLoading(button, true);
+            
+            const taData = {
+                firstName: document.getElementById('ta-fname').value,
+                lastName: document.getElementById('ta-lname').value,
+                email: document.getElementById('ta-email').value,
+                role: document.getElementById('ta-role').value
+            };
+            
+            try {
+                const res = await fetchWithAuth(`${API_URL}/api/enrollment/tas/onboard`, {
+                    method: 'POST',
+                    body: JSON.stringify(taData)
+                });
+                showMessage('ta-message', res.message, res.success ? 'success' : 'error');
+                if (res.success) e.target.reset();
+            } catch (err) {
+                showMessage('ta-message', 'Operation failed: ' + err.message, 'error');
+            } finally {
+                toggleButtonLoading(button, false);
+            }
+        });
+
+        document.getElementById('onboardCandidateForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            hideMessage('candidate-message');
+            const button = e.target.querySelector('button[type="submit"]');
+            toggleButtonLoading(button, true);
+            
+            const candidateData = {
+                // TA Name and Email are now handled by the server via token
+                firstName: document.getElementById('candidate-fname').value,
+                lastName: document.getElementById('candidate-lname').value,
+                email: document.getElementById('candidate-email').value,
+                contactNumber: document.getElementById('candidate-contact').value,
+                program: document.getElementById('program').value,
+                project: document.getElementById('project').value
+            };
+            
+            try {
+                const res = await fetchWithAuth(`${API_URL}/api/enrollment/candidates/onboard`, {
+                    method: 'POST',
+                    body: JSON.stringify(candidateData)
+                });
+                showMessage('candidate-message', res.message, res.success ? 'success' : 'error');
+                if (res.success) e.target.reset();
+            } catch (err) {
+                showMessage('candidate-message', 'Operation failed: ' + err.message, 'error');
+            } finally {
+                toggleButtonLoading(button, false);
+            }
+        });
+        
+        document.getElementById('memberSearchForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const button = e.target.querySelector('button');
+            toggleButtonLoading(button, true);
+            
+            const role = document.getElementById('memberRoleFilter').value;
+            const searchTerm = document.getElementById('memberSearchTerm').value;
+            
+            try {
+                const res = await fetchWithAuth(`${API_URL}/api/enrollment/users/search?role=${role}&searchTerm=${searchTerm}`);
+                populateMemberResults(res.data);
+                if (!res.success) showMessage('search-message', res.message, 'error');
+            } catch (err) {
+                showMessage('search-message', 'Search failed: ' + err.message, 'error');
+            } finally {
+                toggleButtonLoading(button, false);
+            }
+        });
+
+        document.getElementById('candidateSearchForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const button = e.target.querySelector('button');
+            toggleButtonLoading(button, true);
+            
+            const params = new URLSearchParams({
+                searchTerm: document.getElementById('candidateSearchTerm').value,
+                date: document.getElementById('candidateDateFilter').value,
+                taName: document.getElementById('candidateTaFilter').value,
+                programme: document.getElementById('candidateProgFilter').value
+            });
+            
+            try {
+                const res = await fetchWithAuth(`${API_URL}/api/candidates/search?${params.toString()}`);
+                populateCandidateResults(res.data);
+                if (!res.success) showMessage('search-message', res.message, 'error');
+            } catch (err) {
+                showMessage('search-message', 'Search failed: ' + err.message, 'error');
+            } finally {
+                toggleButtonLoading(button, false);
+            }
+        });
+
+        document.getElementById('program').addEventListener('change', function() {
+            const selectedProgram = this.value;
+            const projectDropdown = document.getElementById('project'); 
+            
+            projectDropdown.innerHTML = '';
+            
+            if (selectedProgram && programmeData[selectedProgram] && programmeData[selectedProgram].length > 0) {
+                projectDropdown.disabled = false;
+                projectDropdown.innerHTML = '<option value="" disabled selected>Select a project</option>';
+                
+                programmeData[selectedProgram].forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project;
+                    option.textContent = project;
+                    projectDropdown.appendChild(option);
+                });
+            } else if (selectedProgram) {
+                projectDropdown.disabled = true;
+                projectDropdown.innerHTML = '<option value="" disabled selected>No projects for this programme</option>';
+            }
+            else {
+                projectDropdown.disabled = true;
+                projectDropdown.innerHTML = '<option value="" disabled selected>Please select a programme first</option>';
+            }
+        });
+    });
+
+    // --- Data Population Functions ---
+
+    function populateDropdowns(data) {
+      const taFilter = document.getElementById('candidateTaFilter');
+      const progFilter = document.getElementById('candidateProgFilter');
+
+      data.uniqueTAs.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        taFilter.appendChild(option);
+      });
+
+      data.uniqueProgs.forEach(prog => {
+        const option = document.createElement('option');
+        option.value = prog;
+        option.textContent = prog;
+        progFilter.appendChild(option);
+      });
+    }
+
+    function populateProgrammeDropdown(data, dropdownId) {
+        const programDropdown = document.getElementById(dropdownId);
+        programDropdown.innerHTML = '<option value="" disabled selected>Select a programme</option>'; // Reset
+        
+        const programs = Object.keys(data).sort();
+        programs.forEach(program => {
+            const option = document.createElement('option');
+            option.value = program;
+            option.textContent = program;
+            programDropdown.appendChild(option);
+        });
+    }
+
+    function populateMemberResults(data) {
+        const tbody = document.getElementById('memberResultsBody');
+        tbody.innerHTML = '';
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">No members found.</td></tr>';
+            return;
+        }
+        data.forEach(member => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${member.firstName} ${member.lastName}</td>
+                <td>${member.email}</td>
+                <td>${member.role}</td>
+                <td><button class="btn btn-resend" onclick="resendMemberCreds('${member.email}', this)">Resend</button></td>
+            `;
+        });
+    }
+
+    function populateCandidateResults(data) {
+        const tbody = document.getElementById('candidateResultsBody');
+        tbody.innerHTML = '';
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8">No candidates found.</td></tr>';
+            return;
+        }
+        data.forEach(c => {
+            const row = tbody.insertRow();
+            // Use the exact field names from the API response
+            row.innerHTML = `
+                <td>${new Date(c.createdAt).toLocaleString('en-IN')}</td>
+                <td>${c.firstName} ${c.lastName}</td>
+                <td>${c.email}</td>
+                <td>${c.program || ''}</td>
+                <td>${c.onboardedByTaName || ''}</td>
+                <td>${c.status || ''}</td>
+                <td>${c.result || ''}</td>
+                <td><button class="btn btn-resend" onclick="resendCandidateCreds('${c.email}', this)">Resend</button></td>
+            `;
+        });
+    }
+
+    // --- Resend Credential Functions ---
+
+    async function resendMemberCreds(email, button) {
+        toggleButtonLoading(button, true);
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/enrollment/users/resend-credentials`, {
+                method: 'POST',
+                body: JSON.stringify({ email: email })
+            });
+            showMessage('search-message', res.message, res.success ? 'success' : 'error');
+        } catch (err) {
+            showMessage('search-message', 'Operation failed: ' + err.message, 'error');
+        } finally {
+            toggleButtonLoading(button, false);
+        }
+    }
+    
+    async function resendCandidateCreds(email, button) {
+        toggleButtonLoading(button, true);
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/candidates/resend-credentials`, {
+                method: 'POST',
+                body: JSON.stringify({ email: email })
+            });
+            showMessage('search-message', res.message, res.success ? 'success' : 'error');
+        } catch (err) {
+            showMessage('search-message', 'Operation failed: ' + err.message, 'error');
+        } finally {
+            toggleButtonLoading(button, false);
+        }
+    }
+  </script>
+
+</body>
+</html>

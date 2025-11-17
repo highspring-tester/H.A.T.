@@ -328,6 +328,11 @@ app.post('/api/enrollment/tas/onboard', authenticateToken, authorize(['Owner', '
   if (!['TA', 'Manager', 'Owner'].includes(role)) {
     return res.status(400).json({ error: 'Invalid role for this application' });
   }
+  // Only an Owner can create another Owner
+  if (role === 'Owner' && req.user.role !== 'Owner') {
+    return res.status(403).json({ error: 'Forbidden: Only Owners can create other Owners.' });
+  }
+
   try {
     let user = await EnrollmentUser.findOne({ email: email.toLowerCase() });
     if (user) return res.status(409).json({ error: 'User with this email already exists' });
@@ -382,9 +387,71 @@ app.post('/api/enrollment/tas/onboard', authenticateToken, authorize(['Owner', '
   }
 });
 
+// --- NEW ROUTE: Search Enrollment Users (for Manager/Owner Dashboard) ---
+app.get('/api/enrollment/users/search', authenticateToken, authorize(['Owner', 'Manager'], 'enrollment'), async (req, res) => {
+  const { searchTerm, role } = req.query;
+  let query = {};
+  if (role) {
+    query.role = role;
+  }
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    query.$or = [
+      { firstName: { $regex: term, $options: 'i' } },
+      { lastName: { $regex: term, $options: 'i' } },
+      { email: { $regex: term, $options: 'i' } }
+    ];
+  }
+
+  try {
+    const users = await EnrollmentUser.find(query).select('-password');
+    res.json({ success: true, data: users });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// --- NEW ROUTE: Resend Enrollment User Credentials (for Manager/Owner Dashboard) ---
+app.post('/api/enrollment/users/resend-credentials', authenticateToken, authorize(['Owner', 'Manager'], 'enrollment'), async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await EnrollmentUser.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ success: false, message: 'Member not found' });
+
+    const newPassword = generateRandomPassword(8);
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    const subject = "Your Onboarding Portal Credentials (Resent)";
+    // Placeholder for emailBody
+    const emailBody = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <p>Hi ${user.firstName},</p>
+          <p>As requested, here is a copy of your login credentials.</p>
+          <p>Your role is: <b>${user.role}</b></p>
+          <p>Username: <b>${user.email}</b></p>
+          <p>Password: <b>${newPassword}</b></p>
+          <a href="${process.env.APP_URL || '#'}/enrollment">Click Here to Login</a>
+        </body>
+      </html>`;
+    
+    await mailTransport.sendMail({
+      to: email, subject: subject,
+      html: emailBody,
+      from: `"Highspring Recruitment" <${process.env.MAIL_USER}>`,
+    });
+    res.json({ success: true, message: `New credentials sent to ${email}.` });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+
 app.post('/api/enrollment/candidates/onboard', authenticateToken, authorize(['TA', 'Manager', 'Owner'], 'enrollment'), async (req, res) => {
   const { firstName, lastName, email, contactNumber, program, project } = req.body;
-  const ta = req.user; 
+  const ta = req.user; // User (TA, Manager, or Owner) is in the token
   try {
     let candidate = await Candidate.findOne({ email: email.toLowerCase() });
     if (candidate) return res.status(409).json({ error: 'Candidate with this email already exists' });
@@ -443,6 +510,10 @@ app.post('/api/quizzer/users/register', authenticateToken, authorize(['Owner', '
   const { firstName, lastName, email, role, programme, project } = req.body;
   if (!['Editor', 'Manager', 'Owner'].includes(role)) {
     return res.status(400).json({ error: 'Invalid role for this application' });
+  }
+    // Only an Owner can create another Owner
+  if (role === 'Owner' && req.user.role !== 'Owner') {
+    return res.status(403).json({ error: 'Forbidden: Only Owners can create other Owners.' });
   }
   try {
     if (programme && project) {
@@ -802,7 +873,7 @@ app.post('/api/test/fail', authenticateToken, authorize(null, 'test-taker'), asy
 
     // Send email to TA
     const subject = `Assessment Result for ${candidate.firstName} ${candidate.lastName}`;
-    const formattedCompletionTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const formattedCompletionTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/KKolkata' });
     
     const htmlBody = `
       <html><body>
@@ -970,6 +1041,21 @@ app.get('/api/quizzes', authenticateToken, async (req, res) => {
 
 app.get('/enrollment', (req, res) => {
     res.sendFile(path.join(__dirname, 'enrollment_login.html'));
+});
+
+// This route serves the TA dashboard
+app.get('/enrollment/ta', (req, res) => {
+    res.sendFile(path.join(__dirname, 'enrollment_ta.html')); 
+});
+
+// This route serves the Manager dashboard
+app.get('/enrollment/manager', (req, res) => {
+    res.sendFile(path.join(__dirname, 'enrollment_manager.html'));
+});
+
+// --- NEW ROUTE: Serves the Owner dashboard ---
+app.get('/enrollment/owner', (req, res) => {
+    res.sendFile(path.join(__dirname, 'enrollment_owner.html'));
 });
 
 app.get('/quizzer', (req, res) => {
