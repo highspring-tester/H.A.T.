@@ -83,7 +83,21 @@
         const user = JSON.parse(localStorage.getItem('quizzerUser'));
 
         if (token && user) {
-            renderDashboard(user);
+            // --- REDIRECT IF ALREADY LOGGED IN ---
+            if (user.role === 'Editor') {
+                window.location.href = window.location.origin + '/quizzer/editor';
+            } else if (user.role === 'Manager') {
+                window.location.href = window.location.origin + '/quizzer/manager';
+            } else if (user.role === 'Owner') {
+                window.location.href = window.location.origin + '/quizzer/owner';
+            } else {
+                // Logged in but unknown role, clear and stay
+                localStorage.removeItem('quizzerToken');
+                localStorage.removeItem('quizzerUser');
+                document.getElementById('loginView').style.display = 'flex';
+                toggleButtonLoading(LOGIN_BUTTON, false);
+                LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
+            }
         } else {
             document.getElementById('loginView').style.display = 'flex';
             document.getElementById('dashboardView').style.display = 'none';
@@ -100,6 +114,8 @@
     }
 
     function renderDashboard(user) {
+        // This function is no longer used for redirection,
+        // but can be kept if you want a dashboard placeholder
         document.getElementById('loginView').style.display = 'none';
         document.getElementById('dashboardView').style.display = 'block';
         
@@ -143,9 +159,18 @@
                 localStorage.setItem('quizzerToken', data.accessToken);
                 localStorage.setItem('quizzerUser', JSON.stringify(data.user));
                 
-                setTimeout(() => {
-                    renderDashboard(data.user);
-                }, 800);
+                // --- NEW REDIRECT LOGIC ---
+                if (data.user.role === 'Editor') {
+                    window.location.href = window.location.origin + '/quizzer/editor';
+                } else if (data.user.role === 'Manager') {
+                    window.location.href = window.location.origin + '/quizzer/manager';
+                } else if (data.user.role === 'Owner') {
+                    window.location.href = window.location.origin + '/quizzer/owner';
+                } else {
+                    // Fallback or error
+                    showMessage('Login successful, but role is not recognized.', 'error');
+                    toggleButtonLoading(LOGIN_BUTTON, false);
+                }
 
             } else {
                 // --- FAILED ---

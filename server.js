@@ -885,7 +885,7 @@ app.post('/api/test/fail', authenticateToken, authorize(null, 'test-taker'), asy
             <th style="border: 1px solid black;">Candidate Name</th><th style="border: 1px solid black;">Username</th><th style="border: 1px solid black;">Score</th><th style="border: 1px solid black;">Percentage</th><th style="border: 1px solid black;">Status</th><th style="border: 1px solid black;">Completion Time</th>
           </tr>
           <tr>
-            <td style="border: 1px solid black;">${candidate.firstName} ${candidate.lastName}</td><td style="border: 1px solid black;">${candidate.username}</td><td style="border: 1px solid black;">0 / 0</td><td style="border: 1px solid black;">0.0%</td><td style="border: 1px solid black;">${failureReason}</td><td style="border: 1px solid black;">${formattedCompletionTime}</td>
+            <td style="border: 1px solid black;">${candidate.firstName} ${candidate.lastName}</td><td style="border: 1px solid black;">${candidate.username}</td><td style_blank-size: 1px solid black;">0 / 0</td><td style="border: 1px solid black;">0.0%</td><td style="border: 1px solid black;">${failureReason}</td><td style="border: 1px solid black;">${formattedCompletionTime}</td>
           </tr>
         </table>
       </body></html>`;
@@ -1060,6 +1060,21 @@ app.get('/enrollment/owner', (req, res) => {
 
 app.get('/quizzer', (req, res) => {
     res.sendFile(path.join(__dirname, 'quizzer_login.html'));
+});
+
+// --- NEW ROUTE: Serves the Quizzer Editor dashboard ---
+app.get('/quizzer/editor', (req, res) => {
+    res.sendFile(path.join(__dirname, 'quizzer_editor.html'));
+});
+
+// --- UPDATED ROUTE: Serves the Quizzer Manager dashboard ---
+app.get('/quizzer/manager', (req, res) => {
+    res.sendFile(path.join(__dirname, 'quizzer_manager.html'));
+});
+
+// --- NEW ROUTE: Serves the Quizzer Owner dashboard ---
+app.get('/quizzer/owner', (req, res) => {
+    res.sendFile(path.join(__dirname, 'quizzer_owner.html'));
 });
 
 app.get('/test', (req, res) => {

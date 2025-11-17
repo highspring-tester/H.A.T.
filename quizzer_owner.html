@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quizzer portal || Owner Dashboard</title>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- 
+    SECURITY GUARD SCRIPT
+    This script runs first. It checks if the user is logged in.
+    If not, or if role is not Owner, it redirects them to the login page.
+  -->
+  <script>
+    const quizzerToken = localStorage.getItem('quizzerToken');
+    const quizzerUser = JSON.parse(localStorage.getItem('quizzerUser'));
+    
+    // If no token, or if the role is not Owner, redirect.
+    if (!quizzerToken || !quizzerUser) {
+      window.location.href = window.location.origin + '/quizzer';
+    } else if (quizzerUser.role !== 'Owner') {
+      // If a Manager or Editor logs in, they get redirected.
+      localStorage.removeItem('quizzerToken');
+      localStorage.removeItem('quizzerUser');
+      window.location.href = window.location.origin + '/quizzer';
+    }
+  </script>
+
+  <div class="top-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <img class="logo" src="https://image2url.com/images/1760988092284-e4525e59-5d99-49ec-bbd8-bbe546f96de6.png" alt="Company Logo" style="height: 40px;">
+      <div class="text-xl font-bold text-gray-800"style="font-size: 24px;"><strong>Quizzer Admin Portal</strong></div>
+    </div>
+    <button onclick="logout()" class="btn logout-btn">Logout</button>
+  </div>
+
+  <div class="app-container">
+    <div class="sidebar">
+      <br>
+      <h3 class="sidebar-header">Menu</h3>
+      <div class="nav-item active" onclick="showView('defaultView', this)">Home</div>
+      <div class="nav-item" onclick="showView('programmeSelectionView', this)">Manage Question Bank</div>
+      <div class="nav-item" onclick="showView('registerUserView', this)">Onboard New Member</div>
+      <div class="nav-item" onclick="showView('searchView', this)">Logs</div> 
+    </div>
+
+    <div class="main-content">
+      <!-- Default Welcome View -->
+      <div id="defaultView" class="content-view active">
+        <div class="default-content">
+          <img src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Company Logo" class="logo-large">
+          <h2 id="welcome-message">Welcome!</h2>
+          <p>Select an option from the menu to get started.</p>
+        </div>
+      </div>
+      
+      <!-- Programme & Project Selection View -->
+      <div id="programmeSelectionView" class="content-view">
+        <div class="view-header">
+          <div class="back-arrow" onclick="goHome()">&#11013;</div>
+          <h2>Select Programme & Project</h2>
+        </div>
+        <div class="form-group">
+          <label for="programme-select">1. Select a Programme</label>
+          <select id="programme-select" class="input-field"><option>Loading programmes...</option></select>
+        </div>
+        <div class="form-group" style="display:none;" id="project-select-group">
+          <label for="project-select">2. Select a Project</label>
+          <select id="project-select" class="input-field"></select>
+        </div>
+        <button id="view-questions-btn" class="btn btn-primary" disabled>View Questions</button>
+      </div>
+
+      <!-- Question Bank View -->
+      <div id="questionBankView" class="content-view"></div>
+      
+      <!-- Question Form View -->
+      <div id="questionFormView" class="content-view"></div>
+      
+      <!-- Register User View -->
+      <div id="registerUserView" class="content-view">
+        <div class="view-header">
+          <div class="back-arrow" onclick="goHome()">&#11013;</div>
+          <h2>Onboard New Member</h2>
+        </div>
+        <div id="register-message" class="message-box"></div>
+        <form id="registerForm">
+          <div class="form-group"><label for="fname">First Name</label><input type="text" id="fname" class="input-field" required></div>
+          <div class="form-group"><label for="lname">Last Name</label><input type="text" id="lname" class="input-field" required></div>
+          <div class="form-group"><label for="email">Official Email</label><input type="email" id="email" class="input-field" required></div>
+          <div class="form-group">
+            <label for="role">Role</label>
+            <select id="role" class="input-field" required>
+              <option value="" disabled selected>Select a role</option>
+              <option value="Editor">Editor</option>
+              <option value="Manager">Manager</option>
+              <option value="Owner">Owner</option>
+            </select>
+          </div>
+          <div class="form-group" id="programme-input-group" style="display:none;">
+            <label for="programme">Programme Name</label>
+            <input type="text" id="programme" class="input-field" list="programme-datalist" required>
+            <datalist id="programme-datalist"></datalist>
+          </div>
+          <div class="form-group" id="project-input-group" style="display:none;">
+            <label for="project">Project Name</label>
+            <input type="text" id="project" class="input-field" list="project-datalist" required>
+            <datalist id="project-datalist"></datalist>
+          </div>
+          <button type="submit" id="registerBtn" class="btn btn-primary"><span class="btn-text">Onboard member</span><div class="loader"></div></button>
+        </form>
+      </div>
+      
+<!-- NEW: Search View -->
+<div id="searchView" class="content-view">
+  <div class="view-header">
+    <div class="back-arrow" onclick="goHome()">&#11013;</div>
+    <h2>Logs</h2>
+  </div>
+
+  <div id="search-message" class="message-box"></div>
+
+  <!-- Member Search Section -->
+  <div class="search-section">
+    <h3>Search Members</h3>
+    <form id="memberSearchForm" class="filter-group">
+      <div class="member-search-grid">
+        <input type="text" id="memberSearchTerm" class="input-field" placeholder="Search by name or email...">
+        <select id="memberRoleFilter" class="input-field">
+          <option value="">All Roles</option>
+          <option value="Owner">Owner</option>
+          <option value="Manager">Manager</option>
+          <option value="Editor">Editor</option>
+        </select>
+        <button type="submit" class="btn btn-primary">
+          <span class="btn-text">Search</span>
+          <div class="loader"></div>
+        </button>
+      </div>
+    </form>
+    <div class="results-table-container">
+      <table class="results-table">
+        <thead><tr><th>Full Name</th><th>Email</th><th>Role</th><th>Programme</th><th>Project</th><th>Action</th></tr></thead>
+        <tbody id="memberResultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Candidate Search Section -->
+  <div class="search-section">
+    <h3>Search Candidates</h3>
+    <form id="candidateSearchForm" class="filter-group">
+      <div class="candidate-search-grid">
+        <input type="text" id="candidateSearchTerm" class="input-field" placeholder="Search by name or email...">
+        <input type="date" id="candidateDateFilter" class="input-field">
+        <select id="candidateTaFilter" class="input-field">
+          <option value="">All TAs</option>
+        </select>
+        <select id="candidateProgFilter" class="input-field">
+          <option value="">All Programmes</option>
+        </select>
+        <select id="candidateResultFilter" class="input-field">
+          <option value="">All Results</option>
+        </select>
+        <button type="submit" class="btn btn-primary">
+          <span class="btn-text">Search</span>
+          <div class="loader"></div>
+        </button>
+      </div>
+    </form>
+    <div class="results-table-container">
+      <table class="results-table">
+        <thead><tr><th>Date</th><th>Candidate Name</th><th>Email</th><th>Programme</th><th>TA Name</th><th>Result</th></tr></thead>
+        <tbody id="candidateResultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+  <!-- (Modals) -->
+  <div id="image-hover-preview-popup"></div>
+  <div id="image-modal" class="modal-overlay" onclick="hideImageModal()"><div class="image-modal-content" onclick="event.stopPropagation()"><span class="image-modal-close" onclick="hideImageModal()">&times;</span><img id="modal-image-src" src="" alt="Enlarged Reference"></div></div>
+  <div id="confirm-delete-modal" class="modal-overlay"><div class="confirm-modal-content"><h3>Confirm Deletion</h3><p>Are you sure you want to permanently delete this question?</p><div class="confirm-btn-group"><button class="confirm-btn cancel" onclick="hideConfirmModal()">Cancel</button><button class="confirm-btn delete" onclick="executeDelete()">Delete</button></div></div></div>
+  
+<!-- TEMPLATES for dynamic views -->
+<template id="template-question-list">
+  <div class="view-header">
+    <div class="back-arrow" onclick="showView('programmeSelectionView', document.querySelectorAll('.nav-item')[1])">&#11013;</div>
+    <h2 id="project-title"></h2>
+  </div>
+  <div class="filter-container">
+      <div class="form-group">
+          <label for="type-filter">Filter by Level</label>
+          <select id="type-filter" class="input-field">
+              <option value="">All Levels</option>
+          </select>
+      </div>
+      <button id="filter-btn" class="btn btn-secondary">Filter</button>
+      <button id="clear-filter-btn" class="btn btn-secondary">Clear</button>
+  </div>
+  <div id="questionListContainer">
+    <div class="table-header">
+      <div class="col-main">Question</div><div class="col-sub">Level</div><div class="col-sub">Answer</div><div class="col-actions">Actions</div>
+    </div>
+    <div id="questionList"></div>
+  </div>
+  <button onclick="showAddQuestionForm()" class="btn btn-primary" style="margin-top: 20px;">Add New Question</button>
+</template>
+
+<template id="template-question-form">
+  <div class="view-header">
+    <div class="back-arrow" onclick="showView('questionBankView')">&#11013;</div>
+    <h2 id="form-title"></h2>
+  </div>
+  <div id="form-message" class="message-box"></div>
+  <form id="questionForm">
+    <input type="hidden" id="form-question-id">
+    <div class="form-group"><label for="form-question-text">Question</label><textarea id="form-question-text" class="input-field" required></textarea></div>
+    <div class="form-grid">
+      <div class="form-group"><label for="form-ref1">Ref URL 1</label><input type="url" id="form-ref1" class="input-field"></div>
+      <div class="form-group"><label for="form-ref2">Ref URL 2</label><input type="url" id="form-ref2" class="input-field"></div>
+      <div class="form-group"><label for="form-ref3">Ref URL 3</label><input type="url" id="form-ref3" class="input-field"></div>
+      <div class="form-group"><label for="form-ref4">Ref URL 4</label><input type="url" id="form-ref4" class="input-field"></div>
+    </div>
+    <div class="form-group"><label for="form-options">Options (comma-separated)</label><textarea id="form-options" class="input-field" placeholder="e.g. Option A,Option B" required></textarea></div>
+    <div class="form-grid">
+      <div class="form-group"><label for="form-question-type">Level</label><select id="form-question-type" class="input-field" required>
+          <option value="">Select Level</option>
+          <option value="easy">Easy</option>
+          <option value="moderate">Moderate</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div> 
+      <div class="form-group"><label for="form-correct-answer">Answer</label><select id="form-correct-answer" class="input-field" required></select></div>
+    </div>
+    <button type="submit" id="saveQuestionBtn" class="btn btn-primary"><span class="btn-text">Save</span><div class="loader"></div></button>
+  </form>
+</template>
+<!-- END TEMPLATES -->
+
+  <script>
+    // --- Global Variables (from security script) ---
+    // quizzerToken
+    // quizzerUser
+    const API_URL = ''; // Relative path
+
+    // Get user info from localStorage, set by login page
+    const currentUser = quizzerUser; 
+    let activeProject = { project: '', sheetName: '' };
+    let allAccessData = {}, allProgrammeData = {}; // allAccessData = Owner's full list, allProgrammeData = for datalists
+    let questionIdToDelete = null, originalQuestionData = null, allQuestions = [];
+
+    /**
+     * Helper function to make authenticated API calls
+     */
+    async function fetchWithAuth(url, options = {}) {
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${quizzerToken}`
+        };
+        if (options.body) {
+            headers['Content-Type'] = 'application/json';
+        }
+        
+        const response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401 || response.status === 403) {
+            logout(); // Token is invalid or expired
+        }
+        
+        const data = await response.json();
+
+        if (!response.ok) {
+            // Check if data is an object with an error message, otherwise default
+            const message = (data && data.error) ? data.error : (response.statusText || 'API request failed');
+            throw new Error(message);
+        }
+        return data;
+    }
+
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        document.getElementById('questionBankView').innerHTML = document.getElementById('template-question-list').innerHTML;
+        document.getElementById('questionFormView').innerHTML = document.getElementById('template-question-form').innerHTML;
+        
+        // Fetch data for project/programme selectors
+        try {
+            const accessData = await fetchWithAuth(`${API_URL}/api/quizzer/access-data`);
+            renderProgrammeSelector(accessData); // For "Manage Question Bank"
+        } catch (error) {
+            renderProgrammeSelector({ error: error.message });
+        }
+        
+        // Fetch data for registration form datalists
+        try {
+            const programmeData = await fetchWithAuth(`${API_URL}/api/programmes`);
+            setupRegistrationFormDatalists(programmeData.data); // Server wraps in 'data'
+        } catch (error) {
+            console.error("Error fetching programme lists:", error);
+        }
+        
+        loadCandidateFilters();
+
+        document.getElementById('welcome-message').textContent = `Welcome, ${currentUser.fullName}!`;
+        document.getElementById('registerForm').addEventListener('submit', handleRegisterSubmit);
+        document.getElementById('role').addEventListener('change', handleRoleChange);
+        document.getElementById('programme').addEventListener('input', updateProjectDatalist);
+        document.getElementById('programme-select').addEventListener('change', populateProjectSelector);
+        document.getElementById('view-questions-btn').addEventListener('click', handleViewQuestionsClick);
+        document.getElementById('memberSearchForm').addEventListener('submit', handleMemberSearch);
+        document.getElementById('candidateSearchForm').addEventListener('submit', handleCandidateSearch);
+        document.getElementById('questionForm').onsubmit = handleFormSubmit;
+        handleRoleChange(); // Set initial form state
+
+        ['form-ref1', 'form-ref2', 'form-ref3', 'form-ref4'].forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('mouseenter', e => showImageHover(e.target));
+                input.addEventListener('mouseleave', hideImageHover);
+            }
+        });
+    });
+
+    function showView(viewId, navElement) {
+      document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      if (navElement) navElement.classList.add('active');
+    }
+    function goHome() { showView('defaultView', document.querySelector('.nav-item')); }
+    function logout() { 
+      localStorage.removeItem('quizzerToken');
+      localStorage.removeItem('quizzerUser');
+      window.location.href = window.location.origin + '/quizzer';
+    }
+
+    async function loadCandidateFilters() {
+        try {
+            const response = await fetchWithAuth(`${API_URL}/api/candidates/search`);
+            if (response.success) {
+                populateDropdown('candidateTaFilter', response.uniqueTAs);
+                populateDropdown('candidateProgFilter', response.uniqueProgs);
+                populateDropdown('candidateResultFilter', response.uniqueResults);
+            }
+        } catch (error) {
+            console.error('Error loading candidate filters:', error);
+        }
+    }
+
+    async function handleMemberSearch(e) {
+        e.preventDefault();
+        const button = e.target.querySelector('button');
+        toggleButtonLoading(button, true);
+        const searchTerm = document.getElementById('memberSearchTerm').value;
+        const roleFilter = document.getElementById('memberRoleFilter').value;
+        try {
+            const results = await fetchWithAuth(`${API_URL}/api/quizzer/users/search?searchTerm=${encodeURIComponent(searchTerm)}&roleFilter=${encodeURIComponent(roleFilter)}`);
+            renderMemberResults(results);
+        } catch (error) {
+            renderMemberResults({ error: error.message });
+        } finally {
+            toggleButtonLoading(button, false);
+        }
+    }
+
+    async function handleCandidateSearch(e) {
+        e.preventDefault();
+        const button = e.target.querySelector('button');
+        toggleButtonLoading(button, true);
+        const searchTerm = document.getElementById('candidateSearchTerm').value;
+        const dateFilter = document.getElementById('candidateDateFilter').value;
+        const taFilter = document.getElementById('candidateTaFilter').value;
+        const progFilter = document.getElementById('candidateProgFilter').value;
+        const resultFilter = document.getElementById('candidateResultFilter').value;
+        
+        const params = new URLSearchParams({
+            searchTerm,
+            date: dateFilter,
+            taName: taFilter,
+            programme: progFilter,
+            resultFilter
+        });
+
+        try {
+            const response = await fetchWithAuth(`${API_URL}/api/candidates/search?${params.toString()}`);
+            if (response.success) {
+                renderCandidateResults(response.data); // Note: server returns candidates in `data` property
+                // Re-populate filters with potentially updated lists
+                populateDropdown('candidateTaFilter', response.uniqueTAs);
+                populateDropdown('candidateProgFilter', response.uniqueProgs);
+                populateDropdown('candidateResultFilter', response.uniqueResults);
+            } else {
+                showMessage('search-message', response.message || 'Error searching candidates', 'error');
+            }
+        } catch (error) {
+             showMessage('search-message', error.message, 'error');
+        } finally {
+            toggleButtonLoading(button, false);
+        }
+    }
+    
+    function renderMemberResults(results) {
+        const tbody = document.getElementById('memberResultsBody');
+        tbody.innerHTML = '';
+        if (results.error) { tbody.innerHTML = `<tr><td colspan="6">${results.error}</td></tr>`; return; }
+        if (!Array.isArray(results) || results.length === 0) { tbody.innerHTML = `<tr><td colspan="6">No members found.</td></tr>`; return; }
+        
+        results.forEach(member => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${member.firstName} ${member.lastName}</td>
+                <td>${member.email}</td>
+                <td>${member.role}</td>
+                <td>${member.programme || 'N/A'}</td>
+                <td>${member.project || 'N/A'}</td>
+                <td><button class="btn btn-resend btn-sm" onclick="resendCredentials('${member.email}', this)">Resend</button></td>
+            `;
+        });
+    }
+
+    function renderCandidateResults(results) {
+        const tbody = document.getElementById('candidateResultsBody');
+        tbody.innerHTML = '';
+        if (!Array.isArray(results) || results.length === 0) { tbody.innerHTML = `<tr><td colspan="6">No candidates found.</td></tr>`; return; }
+
+        results.forEach(candidate => {
+            const row = tbody.insertRow();
+            const formattedDate = new Date(candidate.createdAt).toLocaleDateString('en-IN');
+            row.innerHTML = `
+                <td>${formattedDate}</td>
+                <td>${candidate.firstName} ${candidate.lastName}</td>
+                <td>${candidate.email}</td>
+                <td>${candidate.program}</td>
+                <td>${candidate.onboardedByTaName}</td>
+                <td>${candidate.result || 'N/A'}</td>
+            `;
+        });
+    }
+
+    async function resendCredentials(email, button) {
+        toggleButtonLoading(button, true);
+        showMessage('search-message', '', 'success', true);
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/quizzer/users/resend-credentials`, {
+                method: 'POST',
+                body: JSON.stringify({ email })
+            });
+            showMessage('search-message', res.message, res.success ? 'success' : 'error');
+        } catch (error) {
+            showMessage('search-message', error.message, 'error');
+        } finally {
+            toggleButtonLoading(button, false);
+        }
+    }
+    
+    function populateDropdown(selectId, options) {
+        const select = document.getElementById(selectId);
+        const currentVal = select.value;
+        while (select.options.length > 1) { select.remove(1); }
+        (options || []).forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            select.appendChild(option);
+        });
+        select.value = currentVal; 
+    }
+
+    function renderProgrammeSelector(data) {
+        allAccessData = data; // data is { "Programme A": [{ project, sheetName }], ... }
+        const select = document.getElementById('programme-select');
+        select.innerHTML = '<option value="" selected disabled>Select a Programme</option>';
+        if (data && data.error) { select.innerHTML = `<option>${data.error}</option>`; return; }
+        const programmes = Object.keys(data);
+        if (programmes.length === 0) { select.innerHTML = '<option>No programmes found</option>'; return; }
+        programmes.sort().forEach(p => { const opt = document.createElement('option'); opt.value = p; opt.textContent = p; select.appendChild(opt); });
+    }
+   
+    function populateProjectSelector() {
+        const programme = document.getElementById('programme-select').value;
+        const projectGroup = document.getElementById('project-select-group');
+        const projectSelect = document.getElementById('project-select');
+        const viewBtn = document.getElementById('view-questions-btn');
+        if (!programme || !allAccessData[programme]) { projectGroup.style.display = 'none'; viewBtn.disabled = true; return; }
+        projectSelect.innerHTML = '<option value="" selected disabled>Select a Project</option>';
+        allAccessData[programme].forEach(p => { const opt = document.createElement('option'); opt.value = p.sheetName; opt.textContent = p.project; opt.dataset.projectName = p.project; projectSelect.appendChild(opt); });
+        projectGroup.style.display = 'block';
+        viewBtn.disabled = true; // Disable until a project is selected
+        projectSelect.onchange = () => viewBtn.disabled = false; // Enable button on project selection
+    }
+    
+    function handleViewQuestionsClick() {
+        const projectSelect = document.getElementById('project-select');
+        const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+        if (!selectedOption || !selectedOption.value) { alert("Please select a project."); return; } // Use custom modal
+        const sheetName = selectedOption.value;
+        const projectName = selectedOption.dataset.projectName;
+        manageProject(projectName, sheetName);
+    }
+   
+    function manageProject(project, sheetName) {
+        activeProject = { project, sheetName };
+        loadQuestions();
+        showView('questionBankView', document.querySelectorAll('.nav-item')[1]); // Keep nav item highlighted
+        document.getElementById('filter-btn').onclick = applyFilter;
+        document.getElementById('clear-filter-btn').onclick = clearFilter;
+    }
+    
+    async function loadQuestions() { 
+        document.getElementById('project-title').textContent = activeProject.project; 
+        document.getElementById('questionList').innerHTML = '<p>Loading...</p>';
+        try {
+            const response = await fetchWithAuth(`${API_URL}/api/quizzer/questions/${activeProject.sheetName}`);
+            renderQuestions(response);
+        } catch (error) {
+            renderQuestions({ error: error.message });
+        }
+    }
+    
+    function renderQuestions(response) {
+      if (response && response.error) { document.getElementById('questionList').innerHTML = `<p class="error-text">${response.error}</p>`; return; }
+      allQuestions = response || [];
+      populateTypeFilter();
+      displayQuestions(allQuestions);
+    }
+    
+    // Copied from quizzer_editor.html
+    function displayQuestions(questionsToDisplay) {
+        const list = document.getElementById('questionList');
+        list.innerHTML = '';
+        if (!questionsToDisplay || questionsToDisplay.length === 0) {
+            const selectedType = document.getElementById('type-filter').value;
+            list.innerHTML = selectedType
+                ? `<p class="error-text" style="text-align:center; padding: 20px;">No questions found with the level "${selectedType}".</p>`
+                : `<p class="error-text" style="text-align:center; padding: 20px;">No questions found for this question bank.</p>`;
+            return;
+        }
+
+        questionsToDisplay.forEach(q => {
+            const item = document.createElement('div');
+            item.className = 'table-row';
+            item.innerHTML = `
+            <div class="col-main">
+                <div class="question-id">${q.questionId}</div>
+                <div class="question-text">${q.question}</div>
+                <div class="question-refs"></div>
+            </div>
+            <div class="col-sub">${q.questionType}</div>
+            <div class="col-sub answer-tag">${q.correctAnswer}</div>
+            <div class="col-actions"></div>`;
+
+            const refsContainer = item.querySelector('.question-refs');
+            (q.referenceUrls || []).forEach(url => {
+              if (url) {
+                  const refEl = document.createElement('div');
+                  refEl.className = 'ref-icon';
+                  refEl.dataset.url = url;
+                  refEl.innerHTML = `<i class="fa-solid fa-image icon-image"></i>`;
+                  refEl.addEventListener('click', () => showImageModal(refEl));
+                  refEl.addEventListener('mouseenter', () => showImageHover(refEl));
+                  refEl.addEventListener('mouseleave', hideImageHover);
+                  refsContainer.appendChild(refEl);
+              }
+            });
+
+            const actions = item.querySelector('.col-actions');
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn-icon'; editBtn.title = 'Edit';
+            editBtn.innerHTML = `<i class="fa-solid fa-pen icon-edit"></i>`;
+            editBtn.addEventListener('click', () => showEditQuestionForm(q.questionId));
+            actions.appendChild(editBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-icon'; delBtn.title = 'Delete';
+            delBtn.innerHTML = `<i class="fa-solid fa-trash icon-delete"></i>`;
+            delBtn.addEventListener('click', () => confirmDeleteQuestion(q.questionId));
+            actions.appendChild(delBtn);
+
+            list.appendChild(item);
+        });
+    }
+    
+    // Copied from quizzer_editor.html
+    function populateTypeFilter() {
+        const typeFilter = document.getElementById('type-filter'); const currentVal = typeFilter.value;
+        while (typeFilter.options.length > 1) { typeFilter.remove(1); }
+        const uniqueTypes = [...new Set(allQuestions.map(q => q.questionType).filter(Boolean))];
+        uniqueTypes.sort().forEach(type => { 
+            const option = document.createElement('option'); 
+            option.value = type; 
+            option.textContent = type.charAt(0).toUpperCase() + type.slice(1); // Capitalize
+            typeFilter.appendChild(option); 
+        });
+        typeFilter.value = currentVal;
+    }
+   
+    function applyFilter() { const selectedType = document.getElementById('type-filter').value; const filteredQuestions = selectedType ? allQuestions.filter(q => q.questionType === selectedType) : allQuestions; displayQuestions(filteredQuestions); }
+    function clearFilter() { document.getElementById('type-filter').value = ''; displayQuestions(allQuestions); }
+    
+    // Copied from quizzer_editor.html
+    function updateAnswerOptions(event, selectedAnswer = '') { 
+        const optionsText = event ? event.target.value : document.getElementById('form-options').value; 
+        const answerSelect = document.getElementById('form-correct-answer'); 
+        const options = optionsText.split(',').map(opt => opt.trim()).filter(Boolean); 
+        answerSelect.innerHTML = '<option value="" disabled selected>Select an answer</option>'; 
+        options.forEach(opt => { 
+            const optionEl = document.createElement('option'); 
+            optionEl.value = opt; optionEl.textContent = opt; 
+            if (opt === selectedAnswer) { optionEl.selected = true; } 
+            answerSelect.appendChild(optionEl); 
+        }); 
+    }
+    
+    // Copied from quizzer_editor.html
+    function showAddQuestionForm() { 
+        originalQuestionData = null; 
+        const form = document.getElementById('questionForm'); 
+        form.oninput = null; 
+        form.reset(); 
+        document.getElementById('form-question-id').value = ''; 
+        document.getElementById('form-title').textContent = 'Add New Question'; 
+        document.getElementById('saveQuestionBtn').querySelector('.btn-text').textContent = 'Save Question'; 
+        document.getElementById('saveQuestionBtn').disabled = false; 
+        updateAnswerOptions(null); 
+        document.getElementById('form-options').oninput = updateAnswerOptions; 
+        showMessage('form-message', '', 'success', true); 
+        showView('questionFormView'); 
+    }
+    
+    // Copied from quizzer_editor.html
+    function showEditQuestionForm(id) { 
+        const q = allQuestions.find(q => String(q.questionId) === String(id)); 
+        if (!q) return; 
+        originalQuestionData = { ...q }; 
+        const form = document.getElementById('questionForm'); 
+        form.reset(); 
+        document.getElementById('form-title').textContent = 'Edit Question'; 
+        const saveBtn = document.getElementById('saveQuestionBtn'); 
+        saveBtn.querySelector('.btn-text').textContent = 'Update'; 
+        saveBtn.disabled = true; 
+        showMessage('form-message', '', 'success', true); 
+        document.getElementById('form-question-id').value = q.questionId ?? ''; 
+        document.getElementById('form-question-text').value = q.question ?? ''; 
+        document.getElementById('form-ref1').value = (q.referenceUrls && q.referenceUrls[0]) || '';
+        document.getElementById('form-ref2').value = (q.referenceUrls && q.referenceUrls[1]) || '';
+        document.getElementById('form-ref3').value = (q.referenceUrls && q.referenceUrls[2]) || '';
+        document.getElementById('form-ref4').value = (q.referenceUrls && q.referenceUrls[3]) || '';
+        document.getElementById('form-options').value = q.options ?? ''; 
+        document.getElementById('form-question-type').value = q.questionType ?? ''; 
+        updateAnswerOptions(null, q.correctAnswer ?? ''); 
+        form.oninput = checkForEditChanges; 
+        document.getElementById('form-options').oninput = (e) => { updateAnswerOptions(e); checkForEditChanges(); }; 
+        showView('questionFormView'); 
+    }
+    
+    // Copied from quizzer_editor.html
+    async function handleFormSubmit(e) { 
+        e.preventDefault(); 
+        const button = document.getElementById('saveQuestionBtn'); 
+        toggleButtonLoading(button, true); 
+        const qId = document.getElementById('form-question-id').value; 
+        const qData = { 
+            question: document.getElementById('form-question-text').value, 
+            ref1: document.getElementById('form-ref1').value, 
+            ref2: document.getElementById('form-ref2').value, 
+            ref3: document.getElementById('form-ref3').value, 
+            ref4: document.getElementById('form-ref4').value, 
+            options: document.getElementById('form-options').value, 
+            type: document.getElementById('form-question-type').value, 
+            answer: document.getElementById('form-correct-answer').value 
+        }; 
+        
+        try {
+            let res;
+            if (qId) { 
+                // UPDATE (PUT request)
+                res = await fetchWithAuth(`${API_URL}/api/quizzer/questions/${activeProject.sheetName}/${qId}`, {
+                method: 'PUT',
+                body: JSON.stringify(qData)
+                });
+            } else {
+                // ADD (POST request)
+                res = await fetchWithAuth(`${API_URL}/api/quizzer/questions/${activeProject.sheetName}`, {
+                method: 'POST',
+                body: JSON.stringify(qData)
+                });
+            }
+            
+            // On success
+            originalQuestionData = null;
+            loadQuestions(); // Reload questions for the active project
+            showView('questionBankView', document.querySelectorAll('.nav-item')[1]); 
+            
+        } catch (err) {
+            showMessage('form-message', err.message, 'error'); 
+        } finally {
+            toggleButtonLoading(button, false); 
+        }
+    }
+    
+    // Copied from quizzer_editor.html
+    function checkForEditChanges() { 
+        if (!originalQuestionData) return; 
+        const currentData = { 
+            questionId: document.getElementById('form-question-id').value,
+            question: document.getElementById('form-question-text').value, 
+            ref1: document.getElementById('form-ref1').value, 
+            ref2: document.getElementById('form-ref2').value, 
+            ref3: document.getElementById('form-ref3').value, 
+            ref4: document.getElementById('form-ref4').value, 
+            options: document.getElementById('form-options').value, 
+            questionType: document.getElementById('form-question-type').value, 
+            correctAnswer: document.getElementById('form-correct-answer').value,
+            referenceUrls: [
+              document.getElementById('form-ref1').value,
+              document.getElementById('form-ref2').value,
+              document.getElementById('form-ref3').value,
+              document.getElementById('form-ref4').value
+            ].filter(String)
+        }; 
+        let hasChanged = false; 
+        const keysToCompare = ['question', 'options', 'questionType', 'correctAnswer', 'referenceUrls'];
+        for (const key of keysToCompare) {
+            const original = JSON.stringify(originalQuestionData[key] || (key === 'referenceUrls' ? [] : ''));
+            const current = JSON.stringify(currentData[key] || (key === 'referenceUrls' ? [] : ''));
+            if (original !== current) {
+                hasChanged = true; 
+                break; 
+            }
+        } 
+        document.getElementById('saveQuestionBtn').disabled = !hasChanged; 
+    }
+    
+    function confirmDeleteQuestion(id) { 
+        questionIdToDelete = id; 
+        document.getElementById('confirm-delete-modal').style.display = 'flex'; 
+    }
+    
+    // Copied from quizzer_editor.html
+    async function executeDelete() { 
+        if (!questionIdToDelete) return; 
+        try {
+          const res = await fetchWithAuth(`${API_URL}/api/quizzer/questions/${activeProject.sheetName}/${questionIdToDelete}`, {
+            method: 'DELETE'
+          });
+          if (res.success) { 
+            loadQuestions(); 
+          } else { 
+            alert('Error: ' + res.message); // Should use custom modal
+          }
+        } catch (err) {
+          alert('Error: ' + err.message); // Should use custom modal
+        } finally {
+          hideConfirmModal();
+        }
+    }
+    
+    function setupRegistrationFormDatalists(data) { 
+        if (data && data.error) { console.error("Error fetching programme lists:", data.error); return; } 
+        allProgrammeData = data; // data is { "Programme A": ["Proj 1"], ... }
+        const programmeDatalist = document.getElementById('programme-datalist'); 
+        programmeDatalist.innerHTML = ''; 
+        Object.keys(allProgrammeData).forEach(programme => { 
+            const option = document.createElement('option'); 
+            option.value = programme; 
+            programmeDatalist.appendChild(option); 
+        }); 
+    }
+    
+    function updateProjectDatalist() { 
+        const programmeName = document.getElementById('programme').value; 
+        const projectDatalist = document.getElementById('project-datalist'); 
+        projectDatalist.innerHTML = ''; 
+        if (allProgrammeData[programmeName]) { 
+            allProgrammeData[programmeName].forEach(project => { 
+                const option = document.createElement('option'); 
+                option.value = project; 
+                projectDatalist.appendChild(option); 
+            }); 
+        } 
+    }
+    
+    function handleRoleChange() { 
+        const role = document.getElementById('role').value; 
+        const programmeGroup = document.getElementById('programme-input-group'); 
+        const projectGroup = document.getElementById('project-input-group'); 
+        const programmeInput = document.getElementById('programme'); 
+        const projectInput = document.getElementById('project'); 
+        const programmeRequired = (role === 'Manager' || role === 'Editor'); 
+        programmeInput.required = programmeRequired; 
+        programmeGroup.style.display = programmeRequired ? 'block' : 'none'; 
+        const projectRequired = (role === 'Editor'); 
+        projectInput.required = projectRequired; 
+        projectGroup.style.display = projectRequired ? 'block' : 'none'; 
+    }
+    
+    async function handleRegisterSubmit(e) { 
+        e.preventDefault(); 
+        const button = document.getElementById('registerBtn'); 
+        toggleButtonLoading(button, true); 
+        const role = document.getElementById('role').value; 
+        const userData = { 
+            firstName: document.getElementById('fname').value, 
+            lastName: document.getElementById('lname').value, 
+            email: document.getElementById('email').value, 
+            role: role, 
+            programme: (role === 'Manager' || role === 'Editor') ? document.getElementById('programme').value : '', 
+            project: role === 'Editor' ? document.getElementById('project').value : '' 
+        }; 
+        
+        try {
+            const res = await fetchWithAuth(`${API_URL}/api/quizzer/users/register`, {
+                method: 'POST',
+                body: JSON.stringify(userData)
+            });
+            
+            showMessage('register-message', res.message, res.success ? 'success' : 'error');
+            if (res.success) {
+                document.getElementById('registerForm').reset();
+                handleRoleChange();
+                // Refresh all data
+                const accessData = await fetchWithAuth(`${API_URL}/api/quizzer/access-data`);
+                renderProgrammeSelector(accessData);
+                const programmeData = await fetchWithAuth(`${API_URL}/api/programmes`);
+                setupRegistrationFormDatalists(programmeData.data);
+            }
+        } catch (error) {
+            showMessage('register-message', error.message, 'error');
+        } finally {
+            toggleButtonLoading(button, false);
+        }
+    }
+    
+    function toggleButtonLoading(button, isLoading) { button.disabled = isLoading; button.classList.toggle('loading', isLoading); }
+    function showMessage(boxId, msg, type, hide = false) { const box = document.getElementById(boxId); box.textContent = msg; box.className = 'message-box ' + type; box.style.display = hide ? 'none' : 'block'; }
+    function showImageModal(el) { const url = el.dataset.url; if (!url) return; document.getElementById('modal-image-src').src = url; document.getElementById('image-modal').style.display = 'flex'; }
+    function hideImageModal() { document.getElementById('image-modal').style.display = 'none'; document.getElementById('modal-image-src').src = ''; }
+    function hideConfirmModal() { questionIdToDelete = null; document.getElementById('confirm-delete-modal').style.display = 'none'; }
+    function showImageHover(el) { const p = document.getElementById('image-hover-preview-popup'); const url = el.dataset.url || el.value; if (!url) return; p.innerHTML = `<img src="${url}" alt="preview">`; const r = el.getBoundingClientRect(); p.style.left = `${r.left + window.scrollX}px`; p.style.top = `${r.bottom + window.scrollY + 5}px`; p.style.display = 'block'; }
+    function hideImageHover() { document.getElementById('image-hover-preview-popup').style.display = 'none'; }
+  </script>
+</body>
+</html>
