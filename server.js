@@ -1,6 +1,6 @@
 // Main application file: server.js
 // This file initializes and runs the Express server, now with Mongoose.
-// FINAL VERSION: Merges all 3 apps (Enrollment, Quizzer, and Test Tool) AND serves two login frontends.
+// FINAL VERSION: Merges all 3 apps (Enrollment, Quizzer, and Test Tool) AND serves all 3 login frontends.
 
 require('dotenv').config();
 const express = require('express');
@@ -10,13 +10,17 @@ const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
-const path = require('path'); // <-- NEW: Added path module
+const path = require('path'); // <-- Required for serving HTML files
 
 const app = express();
 
 // --- Middleware ---
 app.use(cors());
 app.use(express.json());
+
+// --- STATIC FILE SERVING ---
+// This tells the server to look in the root directory for files like styles.css
+app.use(express.static(path.join(__dirname))); 
 
 // --- MongoDB Connection ---
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -192,7 +196,6 @@ app.get('/api/health', (req, res) => {
 
 // Enrollment App Login
 app.post('/api/enrollment/auth/login', async (req, res) => {
-  // ... (existing code)
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
@@ -223,7 +226,6 @@ app.post('/api/enrollment/auth/login', async (req, res) => {
 
 // Quizzer App Login
 app.post('/api/quizzer/auth/login', async (req, res) => {
-  // ... (existing code)
   const { username, password } = req.body; 
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
@@ -259,7 +261,7 @@ app.post('/api/quizzer/auth/login', async (req, res) => {
   }
 });
 
-// --- NEW: Test Taker Login Route ---
+// Test Taker Login Route
 app.post('/api/test/auth/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -304,7 +306,6 @@ app.post('/api/test/auth/login', async (req, res) => {
 // --- ENROLLMENT APP ROUTES ---
 // (Protected with 'enrollment' scope)
 app.get('/api/enrollment/me', authenticateToken, authorize(['TA', 'Manager', 'Owner'], 'enrollment'), async (req, res) => {
-  // ... (existing code)
   try {
     const user = await EnrollmentUser.findById(req.user.id).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -320,7 +321,6 @@ app.get('/api/enrollment/me', authenticateToken, authorize(['TA', 'Manager', 'Ow
 });
 
 app.post('/api/enrollment/tas/onboard', authenticateToken, authorize(['Owner', 'Manager'], 'enrollment'), async (req, res) => {
-  // ... (existing code)
   const { firstName, lastName, email, role } = req.body;
   if (!firstName || !lastName || !email || !role) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -345,11 +345,34 @@ app.post('/api/enrollment/tas/onboard', authenticateToken, authorize(['Owner', '
 
     const fullName = `${firstName} ${lastName}`.trim();
     const subject = "Your Onboarding Portal Credentials";
-    const emailBody = `... (HTML from your Code.gs 'onboardNewTA') ...`; 
+    // Placeholder for emailBody. In a real app, you'd load this from a template.
+    const emailBody = `
+      <!DOCTYPE html>
+      <html>
+        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f7f7f7;">
+          <table align="center" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; border: 1px solid #e0e0e0;">
+            <tr><td align="center" style="padding:20px; background-color:#062842;"><img src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Company Logo" width="150" style="display:block;"></td></tr>
+            <tr>
+              <td style="padding:30px; color:#333333; font-size:15px; line-height:1.6;">
+                <h2 style="color:#002b5c; margin-top:0;">Hi, ${fullName}!</h2>
+                <p>You can now access the TA Onboarding Portal using the credentials below.</p>
+                <p>Your assigned role is: <b>${role}</b></p>
+                <p style="padding: 15px; background-color: #f1f1f1; border-radius: 5px;">
+                  🧾 <b>Login Credentials</b><br>
+                  Username: <b>${email}</b><br>
+                  Password: <b>${password}</b>
+                </p>
+                <p style="margin-top:20px;">🚀 <b>Access the Portal:</b><br><a href="${process.env.APP_URL || '#'}/enrollment" style="color:#002b5c; text-decoration:none; font-weight:bold;">Click Here to Login</a></p>
+              </td>
+            </tr>
+            <tr><td align="center" style="padding:20px; background-color:#f1f1f1; font-size:13px; color:#555;">© 2025 Highspring India</td></tr>
+          </table>
+        </body>
+      </html>`;
     
     await mailTransport.sendMail({
       to: email, subject: subject,
-      html: emailBody.replace('${fullName}', fullName).replace('${taData.role}', role).replace('${username}', email).replace('${password}', password),
+      html: emailBody,
       from: `"Highspring Recruitment" <${process.env.MAIL_USER}>`,
     });
     res.status(201).json({ success: true, message: 'New user onboarded and credential email sent successfully!' });
@@ -360,7 +383,6 @@ app.post('/api/enrollment/tas/onboard', authenticateToken, authorize(['Owner', '
 });
 
 app.post('/api/enrollment/candidates/onboard', authenticateToken, authorize(['TA', 'Manager', 'Owner'], 'enrollment'), async (req, res) => {
-  // ... (existing code)
   const { firstName, lastName, email, contactNumber, program, project } = req.body;
   const ta = req.user; 
   try {
@@ -383,10 +405,28 @@ app.post('/api/enrollment/candidates/onboard', authenticateToken, authorize(['TA
     await candidate.save();
     
     const subject = "Candidate Assessment Test | Highspring India";
-    const htmlBody = `... (HTML from your Code.gs 'onboardNewCandidate') ...`;
+    const emailBody = `
+      <!DOCTYPE html>
+      <html>
+        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f7f7f7;">
+          <table align="center" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden;">
+            <tr><td align="center" style="padding:20px; background-color:#062842;"><img src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Company Logo" width="150" style="display:block;"></td></tr>
+            <tr>
+              <td style="padding:30px; color:#333333; font-size:15px; line-height:1.6;">
+                <h2 style="color:#002b5c; margin-top:0;">Hi, ${firstName} ${lastName},</h2>
+                <p>Greetings from <b>Highspring India</b>! You have been shortlisted to take the <b>Candidate Assessment Test</b>. Below are your login credentials and instructions.</p>
+                <p>🧾 <b>Login Credentials</b><br>Username: <b>${username}</b><br>Password: <b>${password}</b></p>
+                <p>📝 <b>Test Instructions</b><br>... (Your instructions here) ...</p>
+                <p style="margin-top:20px;">🚀 <b>Access the Test:</b><br><a href="${process.env.APP_URL || '#'}/test" style="color:#002b5c; text-decoration:none; font-weight:bold;">Start Assessment Test</a><br><b>Test Time = 20 Minutes</b></p>
+              </td>
+            </tr>
+            <tr><td align="center" style="padding:20px; background-color:#f1f1f1; font-size:13px; color:#555;">© 2025 Highspring India</td></tr>
+          </table>
+        </body>
+      </html>`;
     await mailTransport.sendMail({
       to: email, subject: subject,
-      html: htmlBody.replace('${firstName} ${lastName}', `${firstName} ${lastName}`).replace('${username}', username).replace('${password}', password),
+      html: emailBody,
       from: `"Highspring Recruitment" <${process.env.MAIL_USER}>`,
     });
     res.status(201).json({ success: true, message: "Candidate onboarded and assessment email sent successfully!" });
@@ -400,7 +440,6 @@ app.post('/api/enrollment/candidates/onboard', authenticateToken, authorize(['TA
 // --- QUIZZER APP ROUTES ---
 // (Protected with 'quizzer' scope)
 app.post('/api/quizzer/users/register', authenticateToken, authorize(['Owner', 'Manager'], 'quizzer'), async (req, res) => {
-  // ... (existing code)
   const { firstName, lastName, email, role, programme, project } = req.body;
   if (!['Editor', 'Manager', 'Owner'].includes(role)) {
     return res.status(400).json({ error: 'Invalid role for this application' });
@@ -431,11 +470,33 @@ app.post('/api/quizzer/users/register', authenticateToken, authorize(['Owner', '
 
     const fullName = `${firstName} ${lastName}`.trim();
     const subject = "Your Question Bank Credentials";
-    const emailBody = `... (HTML from your Code.gs 'sendWelcomeEmail') ...`;
+    const emailBody = `
+      <!DOCTYPE html>
+      <html>
+        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f7f7f7;">
+          <table align="center" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; border: 1px solid #e0e0e0;">
+            <tr><td align="center" style="padding:20px; background-color:#062842;"><img src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Company Logo" width="150" style="display:block;"></td></tr>
+            <tr>
+              <td style="padding:30px; color:#333333; font-size:15px; line-height:1.6;">
+                <h2 style="color:#002b5c; margin-top:0;">Hi, ${fullName}!</h2>
+                <p>You can now access the Quizzer Admin Tool using the credentials below.</p>
+                <p>Your assigned role is: <b>${role}</b></p>
+                <p style="padding: 15px; background-color: #f1f1f1; border-radius: 5px;">
+                  🧾 <b>Login Credentials</b><br>
+                  Username: <b>${username}</b><br>
+                  Password: <b>${password}</b>
+                </p>
+                <p style="margin-top:20px;">🚀 <b>Access the Portal:</b><br><a href="${process.env.APP_URL || '#'}/quizzer" style="color:#002b5c; text-decoration:none; font-weight:bold;">Click Here to Login</a></p>
+              </td>
+            </tr>
+            <tr><td align="center" style="padding:20px; background-color:#f1f1f1; font-size:13px; color:#555;">© 2025 Highspring India</td></tr>
+          </table>
+        </body>
+      </html>`;
     
     await mailTransport.sendMail({
       to: email, subject: subject,
-      html: emailBody.replace('${fullName}', fullName).replace('${role}', role).replace('${username}', username).replace('${password}', password),
+      html: emailBody,
       from: `"Highspring Management Team" <${process.env.MAIL_USER}>`,
     });
     res.status(201).json({ success: true, message: 'New user registered successfully!' });
@@ -445,7 +506,6 @@ app.post('/api/quizzer/users/register', authenticateToken, authorize(['Owner', '
 });
 
 app.get('/api/quizzer/users/search', authenticateToken, authorize(['Owner', 'Manager'], 'quizzer'), async (req, res) => {
-  // ... (existing code)
   const { searchTerm, roleFilter } = req.query;
   let query = {};
   if (roleFilter) query.role = roleFilter;
@@ -466,7 +526,6 @@ app.get('/api/quizzer/users/search', authenticateToken, authorize(['Owner', 'Man
 });
 
 app.post('/api/quizzer/users/resend-credentials', authenticateToken, authorize(['Owner', 'Manager'], 'quizzer'), async (req, res) => {
-  // ... (existing code)
   const { email } = req.body;
   try {
     const user = await QuizzerUser.findOne({ email: email.toLowerCase() });
@@ -490,7 +549,6 @@ app.post('/api/quizzer/users/resend-credentials', authenticateToken, authorize([
 });
 
 app.get('/api/quizzer/questions/:questionBankName', authenticateToken, authorize(['Owner', 'Manager', 'Editor'], 'quizzer'), async (req, res) => {
-  // ... (existing code)
   try {
     const { questionBankName } = req.params;
     const questions = await QuestionBankItem.find({ questionBankName: questionBankName });
@@ -501,7 +559,6 @@ app.get('/api/quizzer/questions/:questionBankName', authenticateToken, authorize
 });
 
 app.post('/api/quizzer/questions/:questionBankName', authenticateToken, authorize(['Owner', 'Manager', 'Editor'], 'quizzer'), async (req, res) => {
-  // ... (existing code)
   try {
     const { questionBankName } = req.params;
     const qData = req.body;
@@ -527,13 +584,12 @@ app.post('/api/quizzer/questions/:questionBankName', authenticateToken, authoriz
     
     await newQuestion.save();
     res.status(201).json({ success: true, message: 'Question added successfully!' });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to add question: ' + error.message });
   }
 });
 
 app.put('/api/quizzer/questions/:questionBankName/:questionId', authenticateToken, authorize(['Owner', 'Manager', 'Editor'], 'quizzer'), async (req, res) => {
-  // ... (existing code)
   try {
     const { questionId } = req.params;
     const qData = req.body;
@@ -552,13 +608,12 @@ app.put('/api/quizzer/questions/:questionBankName/:questionId', authenticateToke
       return res.status(404).json({ success: false, message: 'Question ID not found.' });
     }
     res.json({ success: true, message: 'Question updated successfully!' });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update question: ' + error.message });
   }
 });
 
 app.delete('/api/quizzer/questions/:questionBankName/:questionId', authenticateToken, authorize(['Owner', 'Manager', 'Editor'], 'quizzer'), async (req, res) => {
-  // ... (existing code)
   try {
     const { questionId } = req.params;
     const result = await QuestionBankItem.deleteOne({ questionId: questionId });
@@ -566,13 +621,12 @@ app.delete('/api/quizzer/questions/:questionBankName/:questionId', authenticateT
       return res.status(404).json({ success: false, message: 'Question ID not found.' });
     }
     res.json({ success: true, message: 'Question deleted successfully!' });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to delete question: ' + error.message });
   }
 });
 
 app.get('/api/quizzer/access-data', authenticateToken, authorize(['Owner', 'Manager'], 'quizzer'), async (req, res) => {
-  // ... (existing code)
   try {
     const { role, programme: programmeFromManager } = req.user; 
     const programmes = await Programme.find();
@@ -600,8 +654,8 @@ app.get('/api/quizzer/access-data', authenticateToken, authorize(['Owner', 'Mana
       return res.json(projectsInProgramme);
     }
     res.status(403).json({ error: "Invalid role for access data." });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch access data: ' + error.message });
   }
 });
 
@@ -609,7 +663,6 @@ app.get('/api/quizzer/access-data', authenticateToken, authorize(['Owner', 'Mana
 // (Protected with 'test-taker' scope)
 
 app.get('/api/test/setup', authenticateToken, authorize(null, 'test-taker'), async (req, res) => {
-  // ... (existing code)
   const { questionBankName, username } = req.user;
 
   try {
@@ -651,7 +704,7 @@ app.get('/api/test/setup', authenticateToken, authorize(null, 'test-taker'), asy
         id: q.questionId,
         question: q.question,
         options: q.options ? q.options.split(',').map(item => item.trim()) : [],
-        answer: q.correctAnswer, // Send answer to client? (App script did)
+        answer: q.correctAnswer, 
         time: (q.questionType === 'hard') ? 2 : 1,
         type: q.questionType
       }
@@ -671,7 +724,6 @@ app.get('/api/test/setup', authenticateToken, authorize(null, 'test-taker'), asy
 
 // Submit Test (replaces recordInitialScore and updateVideoUrl)
 app.post('/api/test/submit', authenticateToken, authorize(null, 'test-taker'), async (req, res) => {
-  // ... (existing code)
   const { percentage, scoreString } = req.body;
   const candidateId = req.user.id;
   
@@ -700,19 +752,26 @@ app.post('/api/test/submit', authenticateToken, authorize(null, 'test-taker'), a
     const subject = `Assessment Result for ${candidate.firstName} ${candidate.lastName}`;
     const formattedCompletionTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     
-    const htmlBody = `... (HTML from your Code.gs 'updateVideoUrl') ...`; // Use the final email template
+    const htmlBody = `
+      <html><body>
+        <p>Hi ${candidate.onboardedByTaName},</p>
+        <p>A candidate has completed their assessment. The results have been updated in the master sheet.</p>
+        <p><b>Assessment Details:</b></p>
+        <table cellpadding="8" cellspacing="0" style="border-collapse: collapse; border: 1px solid black;">
+          <tr style="background-color: #f2f2f2;">
+            <th style="border: 1px solid black;">Candidate Name</th><th style="border: 1px solid black;">Username</th><th style="border: 1px solid black;">Score</th><th style="border: 1px solid black;">Percentage</th><th style="border: 1px solid black;">Status</th><th style="border: 1px solid black;">Completion Time</th>
+          </tr>
+          <tr>
+            <td style="border: 1px solid black;">${candidate.firstName} ${candidate.lastName}</td><td style="border: 1px solid black;">${candidate.username}</td><td style="border: 1px solid black;">${candidate.result}</td><td style="border: 1px solid black;">${candidate.score}</td><td style="border: 1px solid black;">${candidate.status}</td><td style="border: 1px solid black;">${formattedCompletionTime}</td>
+          </tr>
+        </table>
+      </body></html>`;
     
     if (candidate.onboardedByTaEmail) {
       await mailTransport.sendMail({
         to: candidate.onboardedByTaEmail,
         subject: subject,
-        html: htmlBody.replace('${taName}', candidate.onboardedByTaName)
-                       .replace('${candidateFullName}', `${candidate.firstName} ${candidate.lastName}`)
-                       .replace('${username}', candidate.username)
-                       .replace('${scoreString}', candidate.result)
-                       .replace('${numericPercentage}', candidate.score)
-                       .replace('${candidateStatus}', candidate.status)
-                       .replace('${formattedCompletionTime}', formattedCompletionTime),
+        html: htmlBody,
         from: `"Highspring Assessment" <${process.env.MAIL_USER}>`,
       });
     }
@@ -726,7 +785,6 @@ app.post('/api/test/submit', authenticateToken, authorize(null, 'test-taker'), a
 
 // Record Test Failure (e.g., Tab Switch)
 app.post('/api/test/fail', authenticateToken, authorize(null, 'test-taker'), async (req, res) => {
-  // ... (existing code)
   const { failureReason } = req.body;
   const candidateId = req.user.id;
   
@@ -744,19 +802,28 @@ app.post('/api/test/fail', authenticateToken, authorize(null, 'test-taker'), asy
 
     // Send email to TA
     const subject = `Assessment Result for ${candidate.firstName} ${candidate.lastName}`;
-    const formattedCompletionTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/KKolkata' });
+    const formattedCompletionTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     
-    const htmlBody = `... (HTML from your Code.gs 'recordFailure') ...`; // Use the failure email template
+    const htmlBody = `
+      <html><body>
+        <p>Hi ${candidate.onboardedByTaName},</p>
+        <p>A candidate's assessment has ended. The results have been updated in the master sheet.</p>
+        <p><b>Assessment Details:</b></p>
+        <table cellpadding="8" cellspacing="0" style="border-collapse: collapse; border: 1px solid black;">
+          <tr style="background-color: #f2f2f2;">
+            <th style="border: 1px solid black;">Candidate Name</th><th style="border: 1px solid black;">Username</th><th style="border: 1px solid black;">Score</th><th style="border: 1px solid black;">Percentage</th><th style="border: 1px solid black;">Status</th><th style="border: 1px solid black;">Completion Time</th>
+          </tr>
+          <tr>
+            <td style="border: 1px solid black;">${candidate.firstName} ${candidate.lastName}</td><td style="border: 1px solid black;">${candidate.username}</td><td style="border: 1px solid black;">0 / 0</td><td style="border: 1px solid black;">0.0%</td><td style="border: 1px solid black;">${failureReason}</td><td style="border: 1px solid black;">${formattedCompletionTime}</td>
+          </tr>
+        </table>
+      </body></html>`;
     
     if (candidate.onboardedByTaEmail) {
       await mailTransport.sendMail({
         to: candidate.onboardedByTaEmail,
         subject: subject,
-        html: htmlBody.replace('${taName}', candidate.onboardedByTaName)
-                       .replace('${candidateFullName}', `${candidate.firstName} ${candidate.lastName}`)
-                       .replace('${username}', candidate.username)
-                       .replace('${failureReason}', failureReason)
-                       .replace('${formattedCompletionTime}', formattedCompletionTime),
+        html: htmlBody,
         from: `"Highspring Assessment" <${process.env.MAIL_USER}>`,
       });
     }
@@ -773,7 +840,11 @@ app.post('/api/test/fail', authenticateToken, authorize(null, 'test-taker'), asy
 
 // Search Candidates
 app.get('/api/candidates/search', authenticateToken, async (req, res) => {
-  // ... (existing code)
+  // Allow any authenticated admin
+  if (req.user.scope !== 'enrollment' && req.user.scope !== 'quizzer') {
+      return res.status(403).json({ error: 'Forbidden' });
+  }
+  
   const { searchTerm, taName, programme, date, resultFilter } = req.query; 
   let query = {};
   if (taName) query.onboardedByTaName = taName;
@@ -811,7 +882,11 @@ app.get('/api/candidates/search', authenticateToken, async (req, res) => {
 
 // Get all programmes and their projects
 app.get('/api/programmes', authenticateToken, async (req, res) => {
-  // ... (existing code)
+  // Allow any authenticated admin
+  if (req.user.scope !== 'enrollment' && req.user.scope !== 'quizzer') {
+      return res.status(403).json({ error: 'Forbidden' });
+  }
+  
   try {
     const programmes = await Programme.find();
     const programmeData = {};
@@ -826,7 +901,11 @@ app.get('/api/programmes', authenticateToken, async (req, res) => {
 
 // Resend Candidate Credentials
 app.post('/api/candidates/resend-credentials', authenticateToken, async (req, res) => {
-  // ... (existing code)
+  // Allow any authenticated admin
+  if (req.user.scope !== 'enrollment' && req.user.scope !== 'quizzer') {
+      return res.status(403).json({ error: 'Forbidden' });
+  }
+  
   const { email } = req.body;
   try {
     const candidate = await Candidate.findOne({ email: email.toLowerCase() });
@@ -837,10 +916,10 @@ app.post('/api/candidates/resend-credentials', authenticateToken, async (req, re
     await candidate.save();
     
     const subject = "Candidate Assessment Test | Highspring India (Resent)";
-    const htmlBody = `... (HTML from your Code.gs 'resendCandidateCredentials') ...`;
+    const emailBody = `... (HTML from your Code.gs 'resendCandidateCredentials') ...`;
     await mailTransport.sendMail({
       to: email, subject: subject,
-      html: htmlBody.replace('${firstName} ${lastName}', `${candidate.firstName} ${candidate.lastName}`).replace('${username}', candidate.username).replace('${password}', newPassword),
+      html: emailBody.replace('${firstName} ${lastName}', `${candidate.firstName} ${candidate.lastName}`).replace('${username}', candidate.username).replace('${password}', newPassword),
       from: `"Highspring Recruitment" <${process.env.MAIL_USER}>`,
     });
     res.json({ success: true, message: `New assessment credentials sent to ${email}.` });
@@ -852,7 +931,6 @@ app.post('/api/candidates/resend-credentials', authenticateToken, async (req, re
 
 // --- LEGACY/UNUSED ROUTES (from original setup) ---
 app.get('/api/assessments', authenticateToken, async (req, res) => {
-  // ... (existing code)
   try {
     const assessments = await Assessment.find().populate('questions');
     res.status(200).json(assessments);
@@ -863,7 +941,6 @@ app.get('/api/assessments', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/enrollments', authenticateToken, async (req, res) => {
-  // ... (existing code)
   try {
     const { userId, courseId, status } = req.body;
     if (!userId || !courseId || !status) {
@@ -879,7 +956,6 @@ app.post('/api/enrollments', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/quizzes', authenticateToken, async (req, res) => {
-    // ... (existing code)
     try {
       const quizzes = await Quiz.find();
       res.status(200).json(quizzes);
@@ -898,6 +974,10 @@ app.get('/enrollment', (req, res) => {
 
 app.get('/quizzer', (req, res) => {
     res.sendFile(path.join(__dirname, 'quizzer_login.html'));
+});
+
+app.get('/test', (req, res) => {
+    res.sendFile(path.join(__dirname, 'test_login.html'));
 });
 
 // Default root path should redirect to the Enrollment App

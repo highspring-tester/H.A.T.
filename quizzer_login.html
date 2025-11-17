@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Highspring || Quizzer Portal</title>
+    <!-- Load Tailwind CSS for modern styling and responsiveness -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/styles.css"> <!-- LINK TO MASTER STYLESHEET -->
+</head>
+<body class="flex items-center justify-center min-h-screen p-0">
+
+  <div id="loginView" class="view active">
+    <div class="card">
+      <div class="card-header">
+        <img class="card-logo" src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Highspring Logo">
+        <h1>Quizzer Admin Portal</h1>
+      </div>
+      <div class="card-body">
+        <div id="login-message" class="message-box"></div>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="username">Username or Email</label>
+            <input type="text" id="username" class="input-field" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="input-field" required>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer">
+        <button type="submit" form="loginForm" id="loginButton" class="btn btn-primary">
+          <span class="btn-text">Login</span>
+          <div class="loader"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dashboardView" style="display:none;" class="p-8 w-full max-w-lg mx-auto">
+      <!-- Placeholder for the dashboard content after successful login -->
+      <div class="bg-white p-6 rounded-lg shadow-lg">
+          <h2 id="welcomeMsg" class="text-2xl font-bold text-gray-800 mb-4">Welcome!</h2>
+          <p class="text-gray-600 mb-4">You have successfully logged in to the Quizzer Portal.</p>
+          <div id="userDetails" class="space-y-2 text-gray-700"></div>
+          <button onclick="logout()" class="mt-6 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Logout</button>
+      </div>
+  </div>
+
+  <script>
+    // --- Global Variables and Selectors ---
+    const API_URL = ''; // Use a relative path for Codespaces
+    const LOGIN_BUTTON = document.getElementById('loginButton');
+    const LOGIN_FORM = document.getElementById('loginForm');
+    const MESSAGE_BOX = document.getElementById('login-message');
+    const USERNAME_INPUT = document.getElementById('username');
+    const PASSWORD_INPUT = document.getElementById('password');
+
+    // --- Helper Functions (Adapted from your original structure) ---
+
+    function toggleButtonLoading(button, isLoading) {
+      if (button) {
+        button.disabled = isLoading;
+        button.classList.toggle('loading', isLoading);
+      }
+    }
+
+    function showMessage(message, type) {
+      MESSAGE_BOX.textContent = message;
+      MESSAGE_BOX.className = 'message-box ' + type;
+      MESSAGE_BOX.style.display = message ? 'block' : 'none';
+    }
+    
+    function hideMessage() {
+        MESSAGE_BOX.style.display = 'none';
+    }
+
+    // --- Core Logic ---
+
+    function checkLoginState() {
+        const token = localStorage.getItem('quizzerToken');
+        const user = JSON.parse(localStorage.getItem('quizzerUser'));
+
+        if (token && user) {
+            renderDashboard(user);
+        } else {
+            document.getElementById('loginView').style.display = 'flex';
+            document.getElementById('dashboardView').style.display = 'none';
+            toggleButtonLoading(LOGIN_BUTTON, false); // Enable button if no token found
+            LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('quizzerToken');
+        localStorage.removeItem('quizzerUser');
+        // Reloading the page will trigger checkLoginState() to show the form
+        window.location.reload(); 
+    }
+
+    function renderDashboard(user) {
+        document.getElementById('loginView').style.display = 'none';
+        document.getElementById('dashboardView').style.display = 'block';
+        
+        document.getElementById('welcomeMsg').textContent = `Welcome, ${user.fullName}!`;
+        document.getElementById('userDetails').innerHTML = `
+            <p><span class="font-semibold">Role:</span> ${user.role}</p>
+            <p><span class="font-semibold">Email:</span> ${user.email}</p>
+            ${user.programme ? `<p><span class="font-semibold">Programme:</span> ${user.programme}</p>` : ''}
+            ${user.project ? `<p><span class="font-semibold">Project:</span> ${user.project}</p>` : ''}
+        `;
+        // In a real app, you would dynamically load the Owner/Manager/Editor view here
+        // For now, this is a successful login placeholder.
+    }
+
+    // --- Event Handler ---
+
+    async function handleLoginSubmit(e) {
+        e.preventDefault();
+        
+        hideMessage();
+        toggleButtonLoading(LOGIN_BUTTON, true);
+
+        const username = USERNAME_INPUT.value; // Quizzer app uses 'username' (which can be email)
+        const password = PASSWORD_INPUT.value;
+        
+        try {
+            // CRITICAL: Call the correct Quizzer-specific API route
+            const response = await fetch(`${API_URL}/api/quizzer/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password }) // Backend expects 'username'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // --- SUCCESS ---
+                showMessage('Login successful! Loading dashboard...', 'success');
+                
+                // Store the token and user data with a Quizzer-specific key
+                localStorage.setItem('quizzerToken', data.accessToken);
+                localStorage.setItem('quizzerUser', JSON.stringify(data.user));
+                
+                setTimeout(() => {
+                    renderDashboard(data.user);
+                }, 800);
+
+            } else {
+                // --- FAILED ---
+                throw new Error(data.error || 'Invalid username or password.');
+            }
+
+        } catch (error) {
+            // --- ERROR ---
+            showMessage(error.message || 'Login failed: Network error.', 'error');
+            toggleButtonLoading(LOGIN_BUTTON, false);
+            LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
+        }
+    }
+
+    // --- Initializer ---
+    document.addEventListener('DOMContentLoaded', () => {
+        checkLoginState();
+        if (LOGIN_FORM) {
+            LOGIN_FORM.addEventListener('submit', handleLoginSubmit);
+        }
+    });
+  </script>
+</body>
+</html>
