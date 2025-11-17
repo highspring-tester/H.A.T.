@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Highspring || Hiring Assessment Test</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/styles.css"> <!-- Fixed stylesheet link -->
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+  <!-- 
+    SECURITY GUARD SCRIPT
+    This script runs first. It checks if the user is logged in.
+    If not, it redirects them to the login page.
+  -->
+  <script>
+    const testToken = localStorage.getItem('testTakerToken');
+    if (!testToken) {
+        window.location.href = window.location.origin + '/hat/test';
+    }
+  </script>
+
+  <div id="app-container" class="w-full max-w-4xl mx-auto">
+    <!-- Instructions View -->
+    <div id="instructions-view" class="bg-white/95 backdrop-blur-sm p-8 rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">Test Instructions</h1>
+        <div class="text-gray-600 space-y-3">
+            <p>Welcome to the assessment. Please read the instructions carefully before you begin.</p>
+            <ul class="list-disc list-inside space-y-2 pl-4">
+                <li>The total duration of the test is <strong>20 minutes</strong>.</li>
+                <li>The test consists of multiple-choice questions.</li>
+                <li>Each question has its own timer. If the timer runs out, the next question will be loaded automatically.</li>
+                <li>You can also move to the next question by clicking the "Next Question" button.</li>
+                <li>Once the overall 20-minute timer is up, the test will end automatically and your results will be recorded.</li>
+                <li>You need to attempt atleast <strong>15 questions</strong> to get the qualifying marks.</strong></li>
+                <li><strong>You must not switch tabs or minimize the browser. Doing so will automatically end the test.</li>
+                <li><strong>You will be under surveillance please ensure to avoid any misconduct</li>
+            </ul>
+        </div>
+
+        <div class="mt-6 border-t pt-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-700">Enable Camera (Required)</span>
+                <label for="camera-toggle" class="toggle-label"><input type="checkbox" id="camera-toggle" class="toggle-checkbox"><div class="toggle-switch"></div></label>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-700">Enable Microphone (Required)</span>
+                <label for="mic-toggle" class="toggle-label"><input type="checkbox" id="mic-toggle" class="toggle-checkbox"><div class="toggle-switch"></div></label>
+            </div>
+        </div>
+
+        <button id="start-test-btn" disabled class="mt-8 w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all opacity-50 cursor-not-allowed">
+            Start Test
+        </button>
+    </div>
+
+
+    <!-- Test View -->
+    <div id="test-view" class="hidden flex flex-col w-full h-screen max-h-[95vh] max-w-7xl mx-auto space-y-4">
+        <!-- Top Bar -->
+        <div class="flex-shrink-0 bg-white/65 backdrop-blur-sm rounded-xl shadow-lg flex justify-between items-center p-4">
+          <!-- LEFT SECTION: logo + title -->
+          <div class="flex items-center space-x-3">
+            <img class="logo" src="https://image2url.com/images/1760988092284-e4525e59-5d99-49ec-bbd8-bbe546f96de6.png" alt="Company Logo" style="height: 40px;">
+            <div id="user-level" class="text-xl font-bold text-gray-800">Hiring Assessment Test</div>
+          </div>
+
+          <!-- RIGHT SECTION: progress + timers -->
+          <div class="flex items-center space-x-6">
+            <div class="flex flex-col items-center">
+              <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+              </div>
+              <p id="progress-text" class="text-xs text-gray-500 mt-1">Question 0</p>
+            </div>
+            <div class="text-center">
+              <div id="question-timer" class="text-lg font-bold text-green-600">00:00</div>
+              <div class="text-xs text-gray-500">Question Time</div>
+            </div>
+            <div class="text-center">
+              <div id="overall-timer" class="text-lg font-bold text-blue-600">20:00</div>
+              <div class="text-xs text-gray-500">Total Time Left</div>
+            </div>
+          </div>
+      </div>
+
+        <!-- Main Content (Grid View) -->
+        <div class="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4 overflow-hidden">
+            <!-- Left Panel (Wider) -->
+            <div class="md:col-span-2 bg-white/65 backdrop-blur-sm rounded-xl shadow-lg p-6 flex flex-col overflow-y-auto custom-scrollbar">
+                <!-- Question View -->
+                <div id="question-area" class="flex-grow">
+                    <h2 id="questionText" class="text-2xl font-semibold text-gray-800 mb-6 leading-relaxed">Loading question...</h2>
+                    <div id="references" class="space-y-2 text-sm">
+                        <!-- References will be injected here -->
+                    </div>
+                </div>
+                <!-- Evidence View (iFrame) -->
+                <div id="evidence-viewer" class="hidden flex-grow flex flex-col">
+                    <div class="flex justify-end mb-2 flex-shrink-0">
+                        <button id="minimize-evidence-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-md text-sm font-medium">Minimize</button>
+                    </div>
+                    <iframe id="evidence-frame" class="w-full border rounded-lg flex-grow"></iframe>
+                </div>
+            </div>
+
+            <!-- Right Column Container -->
+            <div class="md-col-span-1 flex flex-col space-y-4 overflow-hidden">
+                <!-- Options Panel -->
+                <div class="flex-grow bg-white/65 backdrop-blur-sm rounded-xl shadow-lg p-6 overflow-y-auto custom-scrollbar">
+                     <h3 class="text-xl font-semibold text-gray-800 mb-4">Select an Option</h3>
+                     <div id="optionsContainer">
+                        <!-- Options will be injected here -->
+                    </div>
+                 </div>
+                 <!-- Next Question Button -->
+                 <div class="flex-shrink-0">
+                    <button id="nextButton" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-xl shadow-md transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-700 flex items-center justify-center">
+                        Next Question
+                        <svg width="16" height="16" viewBox="0-0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="ml-2">
+                          <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completion View -->
+    <div id="completion-view" class="text-center bg-white/95 backdrop-blur-sm p-8 rounded-xl shadow-lg hidden">
+        <h1 id="completion-title" class="text-4xl font-bold text-blue-600 mb-4">Submitting your test...</h1>
+        <p id="completion-subtitle" class="text-gray-600 text-lg mb-6">Please wait while we process your results. Do not refresh or close the tab.</p>
+        <div id="completion-loader" class="mt-4">
+            <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0-0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+        <p id="completion-final-message" class="text-gray-500 text-sm hidden">You may now close this window.</p>
+    </div>
+
+    <!-- Video Container (initially hidden) -->
+    <div id="video-container" class="hidden fixed top-5 left-5 w-56 h-44 rounded-lg overflow-hidden border-2 border-gray-300 shadow-lg z-50 bg-black">
+        <div id="video-header" class="h-8 bg-gray-700 text-white flex items-center justify-between px-3 cursor-move">
+            <span class="flex items-center gap-2">
+                <span id="recording-indicator" class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                <span>Proctoring</span>
+            </span>
+            <button id="minimize-video-btn" class="text-white font-bold hover:bg-gray-600 px-1 rounded">-</button>
+        </div>
+        <video id="video-feed" autoplay muted playsinline class="w-full h-[calc(100%-32px)] object-cover transform scale-x-[-1]"></video>
+    </div>
+
+    <!-- Submission Modal -->
+    <div id="submission-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-1000">
+        <div class="modal-content bg-white p-8 rounded-lg shadow-xl text-center max-w-sm">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Submit Test?</h2>
+            <p class="text-gray-600 mb-6">There are no more questions in the queue. Are you sure you want to submit your test?</p>
+            <div class="flex justify-center space-x-4">
+                <button id="cancel-submission-btn" class="btn btn-secondary w-auto px-6 py-2 font-semibold">Cancel</button>
+                <button id="confirm-submission-btn" class="btn btn-primary w-auto px-6 py-2 font-semibold">Submit</button>
+            </div>
+        </div>
+    </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Disable context menu (right-click)
+    document.addEventListener('contextmenu', event => event.preventDefault()); 
+    // Disable copy (Ctrl+C / Cmd+C)
+    document.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+            event.preventDefault();
+        }
+    });
+
+    // --- Global State ---
+    const API_URL = ''; // Relative path
+    const localToken = localStorage.getItem('testTakerToken'); // Renamed from testToken
+    let userLevel = null;
+    let loggedInUsername = null;
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let userAnswers = [];
+    let overallTimerInterval;
+    let questionTimerInterval;
+    const TOTAL_TEST_TIME = 20 * 60; // 20 minutes in seconds
+    let isTestEnded = false; // Guard flag
+    
+    let cameraStream, micStream;
+
+    // --- Element Selectors ---
+    const appContainer = document.getElementById('app-container');
+    const instructionsView = document.getElementById('instructions-view');
+    const testView = document.getElementById('test-view');
+    const completionView = document.getElementById('completion-view');
+    const startTestBtn = document.getElementById('start-test-btn');
+    const minimizeEvidenceBtn = document.getElementById('minimize-evidence-btn');
+    const questionArea = document.getElementById('question-area');
+    const evidenceViewer = document.getElementById('evidence-viewer');
+    const evidenceFrame = document.getElementById('evidence-frame');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const userLevelEl = document.getElementById('user-level');
+
+    const cameraToggle = document.getElementById('camera-toggle');
+    const micToggle = document.getElementById('mic-toggle');
+    const videoContainer = document.getElementById('video-container');
+    const videoHeader = document.getElementById('video-header');
+    const videoFeed = document.getElementById('video-feed');
+    const minimizeVideoBtn = document.getElementById('minimize-video-btn');
+
+    const submissionModal = document.getElementById('submission-modal');
+    const confirmSubmissionBtn = document.getElementById('confirm-submission-btn');
+    const cancelSubmissionBtn = document.getElementById('cancel-submission-btn');
+    const completionTitle = document.getElementById('completion-title');
+    const completionSubtitle = document.getElementById('completion-subtitle');
+    const completionLoader = document.getElementById('completion-loader');
+    const completionFinalMessage = document.getElementById('completion-final-message');
+
+    // --- Event Listeners ---
+    startTestBtn.addEventListener('click', handleStartTest);
+    minimizeEvidenceBtn.addEventListener('click', hideEvidence);
+    cameraToggle.addEventListener('change', handlePermissionToggle);
+    micToggle.addEventListener('change', handlePermissionToggle);
+    minimizeVideoBtn.addEventListener('click', () => videoContainer.classList.toggle('h-8')); // Toggles height
+    makeDraggable(videoContainer, videoHeader);
+    confirmSubmissionBtn.addEventListener('click', () => endTest(false)); // Manual submission
+    cancelSubmissionBtn.addEventListener('click', () => submissionModal.classList.add('hidden'));
+
+    // --- Helper: Authenticated Fetch ---
+    async function fetchWithAuth(url, options = {}) {
+        const headers = { ...options.headers, 'Authorization': `Bearer ${localToken}` };
+        if (options.body) headers['Content-Type'] = 'application/json';
+        
+        const response = await fetch(url, { ...options, headers });
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('testTakerToken');
+            window.location.href = window.location.origin + '/hat/test';
+        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || data.message || 'API Error');
+        return data;
+    }
+
+    // --- Initial Setup ---
+    (async function initTest() {
+        try {
+            const data = await fetchWithAuth(`${API_URL}/api/test/setup`);
+            if (data.success) {
+                userLevel = data.userDetails.level;
+                loggedInUsername = data.userDetails.username;
+                questions = data.questions;
+                userAnswers = new Array(questions.length).fill(null);
+                userLevelEl.textContent = userLevel;
+            } else {
+                showFailureScreen('Session Ended', data.message || 'Your test session has ended.');
+            }
+        } catch (error) {
+            console.error('Test setup failed:', error);
+            showFailureScreen('An Error Occurred', error.message || 'A critical error occurred while setting up the test.');
+        }
+    })();
+
+
+    function showFailureScreen(title, message) {
+        // Stop all timers and media
+        isTestEnded = true;
+        clearInterval(overallTimerInterval);
+        clearInterval(questionTimerInterval);
+        [cameraStream, micStream].forEach(stream => stream?.getTracks().forEach(track => track.stop()));
+
+        // Redirect to login page
+        localStorage.removeItem('testTakerToken');
+        alert(`${title}: ${message}`); // Show alert before redirecting
+        window.location.href = window.location.origin + '/hat/test';
+    }
+    
+    function handleTabSwitch() {
+        if (isTestEnded || !document.hidden) return; // Prevent multiple triggers
+        isTestEnded = true;
+
+        clearInterval(overallTimerInterval);
+        clearInterval(questionTimerInterval);
+        [cameraStream, micStream].forEach(stream => stream?.getTracks().forEach(track => track.stop()));
+
+        // Call the failTest API
+        failTest('Test failed: You switched to another tab or window.');
+    }
+
+    async function failTest(reason) {
+        if (isTestEnded) return; // Prevent double submission
+        isTestEnded = true;
+        
+        clearInterval(overallTimerInterval);
+        clearInterval(questionTimerInterval);
+        [cameraStream, micStream].forEach(stream => stream?.getTracks().forEach(track => track.stop()));
+        
+        switchView('completion-view');
+        completionTitle.textContent = "Test Ended";
+        completionTitle.classList.add('text-red-600');
+        completionSubtitle.textContent = reason;
+        
+        try {
+            await fetchWithAuth(`${API_URL}/api/test/fail`, {
+                method: 'POST',
+                body: JSON.stringify({ failureReason: reason })
+            });
+            completionLoader.classList.add('hidden');
+            completionFinalMessage.classList.remove('hidden');
+        } catch (error) {
+            console.error('Failed to log failure:', error);
+            completionLoader.classList.add('hidden');
+            completionFinalMessage.textContent = "Error logging results. Please contact support.";
+            completionFinalMessage.classList.remove('hidden');
+        }
+    }
+
+    function switchView(viewId) {
+      const appContainer = document.getElementById('app-container');
+      if (viewId === 'test-view') {
+          appContainer.classList.remove('max-w-4xl');
+          appContainer.classList.add('max-w-7xl');
+      } else {
+          appContainer.classList.add('max-w-4xl');
+          appContainer.classList.remove('max-w-7xl');
+      }
+      
+      [instructionsView, testView, completionView].forEach(view => {
+        if(view) view.classList.add('hidden');
+      });
+      const viewToShow = document.getElementById(viewId);
+      if(viewToShow) viewToShow.classList.remove('hidden');
+    }
+
+    async function handlePermissionToggle(event) {
+        const { id, checked } = event.target;
+        try {
+            if (id === 'camera-toggle' && checked) {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoFeed.srcObject = cameraStream;
+                videoContainer.classList.remove('hidden');
+            } else if (id === 'mic-toggle' && checked) {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            }
+        } catch (err) {
+            alert(`Could not enable ${id.split('-')[0]}. Please check browser permissions and try again.`);
+            event.target.checked = false;
+            console.error(err);
+        }
+        checkAllToggles();
+    }
+
+    function checkAllToggles() {
+        if (cameraToggle.checked && micToggle.checked) {
+            startTestBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            startTestBtn.disabled = false;
+        } else {
+            startTestBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            startTestBtn.disabled = true;
+        }
+    }
+
+    function handleStartTest() {
+        if (startTestBtn.disabled) return;
+        document.addEventListener('visibilitychange', handleTabSwitch);
+        switchView('test-view');
+        startOverallTimer();
+        showQuestion(currentQuestionIndex);
+    }
+    
+    function startOverallTimer() {
+      let timeLeft = TOTAL_TEST_TIME;
+      const timerEl = document.getElementById('overall-timer');
+      overallTimerInterval = setInterval(() => {
+        timeLeft--;
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        if (timeLeft <= 0) endTest(true); // Auto-submit when time is up
+      }, 1000);
+    }
+    
+    function updateProgressBar(currentQuestionNumber) {
+      const totalForGreen = 15;
+      let percentage = (currentQuestionNumber / totalForGreen) * 100;
+      if (percentage > 100) percentage = 100;
+      progressBar.style.width = `${percentage}%`;
+      progressText.textContent = `Question ${currentQuestionNumber}`;
+      progressBar.style.backgroundColor = currentQuestionNumber >= 15 ? '#16a34a' : '#1f2937';
+    }
+
+    function showQuestion(index) {
+      if (isTestEnded) return;
+      const isLastQuestion = index === questions.length - 1;
+      const oldBtn = document.getElementById('nextButton');
+      const newBtn = oldBtn.cloneNode(true); // Clone to remove old listeners
+      oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+
+      if (isLastQuestion) {
+          newBtn.innerHTML = 'Submit Test';
+          newBtn.addEventListener('click', () => {
+              if(!isTestEnded) submissionModal.classList.remove('hidden');
+          });
+      } else {
+          newBtn.innerHTML = 'Next Question <svg width="16" height="16" viewBox="0-0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="ml-2"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+          newBtn.addEventListener('click', showNextQuestion);
+      }
+      
+      newBtn.disabled = true;
+      newBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      updateProgressBar(index + 1);
+      hideEvidence(); 
+      const question = questions[index];
+      
+      document.getElementById('questionText').textContent = question.question;
+
+      // Handle references (from quizzer_editor.html)
+      const refs = question.referenceUrls || [];
+      const referencesContainer = document.getElementById('references');
+      referencesContainer.innerHTML = `<h3 class="font-semibold text-gray-600 mb-2">Research References:</h3>`;
+      let hasRefs = false;
+      refs.forEach((ref, i) => {
+          if (ref && ref.trim() !== '') {
+              hasRefs = true;
+              const linkBtn = document.createElement('button');
+              linkBtn.textContent = `View Reference ${i + 1}`;
+              linkBtn.className = 'block text-blue-600 hover:underline text-left font-medium';
+              linkBtn.onclick = () => showEvidence(ref);
+              referencesContainer.appendChild(linkBtn);
+          }
+      });
+      referencesContainer.style.display = hasRefs ? 'block' : 'none';
+
+      const optionsContainer = document.getElementById('optionsContainer');
+      optionsContainer.innerHTML = '';
+      const isImageUrl = (url) => (url.startsWith('http') && /\.(jpeg|jpg|gif|png|svg)$/i.test(url));
+      
+      question.options.forEach((option, idx) => {
+          const optionLetter = String.fromCharCode(65 + idx);
+          const optionEl = document.createElement('div');
+          optionEl.className = 'option-container';
+          optionEl.dataset.optionValue = option;
+          optionEl.dataset.placeholder = `Option ${optionLetter}`;
+          optionEl.innerHTML = isImageUrl(option) ? `<img src="${option}" class="real-option-image" alt="Option ${optionLetter}">` : `<span class="real-option">${option}</span>`;
+          optionEl.addEventListener('click', () => {
+              document.querySelectorAll('.option-container').forEach(el => el.classList.remove('selected'));
+              optionEl.classList.add('selected');
+              handleAnswerSelection(optionEl.dataset.optionValue, newBtn);
+          });
+          optionsContainer.appendChild(optionEl);
+      });
+      startQuestionTimer(question.time * 60);
+    }
+
+    function showEvidence(url) {
+      questionArea.classList.add('hidden');
+      evidenceViewer.classList.remove('hidden');
+      evidenceViewer.classList.add('flex');
+      evidenceFrame.src = url;
+    }
+
+    function hideEvidence() {
+      evidenceViewer.classList.add('hidden');
+      evidenceViewer.classList.remove('flex');
+      questionArea.classList.remove('hidden');
+      evidenceFrame.src = 'about:blank';
+    }
+    
+    function handleAnswerSelection(selectedOption, button) {
+        userAnswers[currentQuestionIndex] = selectedOption;
+        button.disabled = false;
+        button.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+
+    function startQuestionTimer(durationSeconds) {
+      clearInterval(questionTimerInterval);
+      let timeLeft = durationSeconds;
+      const timerEl = document.getElementById('question-timer');
+      const updateTimerDisplay = () => {
+          const minutes = Math.floor(timeLeft / 60);
+          const seconds = timeLeft % 60;
+          timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+          timerEl.classList.remove('text-green-600', 'text-amber-500', 'text-red-600');
+          if (timeLeft <= 10) timerEl.classList.add('text-red-600');
+          else if (timeLeft <= 30) timerEl.classList.add('text-amber-500');
+          else timerEl.classList.add('text-green-600');
+      };
+      updateTimerDisplay();
+      questionTimerInterval = setInterval(() => {
+          timeLeft--;
+          updateTimerDisplay();
+          if (timeLeft <= 0) showNextQuestion();
+      }, 1000);
+    }
+
+    function showNextQuestion() {
+      if (questions.length > 0 && currentQuestionIndex >= questions.length - 1) {
+          if(!isTestEnded) submissionModal.classList.remove('hidden');
+          return;
+      }
+      clearInterval(questionTimerInterval);
+      currentQuestionIndex++;
+      showQuestion(currentQuestionIndex);
+    }
+
+    async function performSubmission() {
+      const questionsPresentedCount = Math.min(currentQuestionIndex + 1, questions.length);
+      let score = 0;
+      for (let i = 0; i < questionsPresentedCount; i++) {
+          if (userAnswers[i] && userAnswers[i] === questions[i].answer) score++;
+      }
+      
+      const totalQuestionsInTest = questionsPresentedCount;
+      const scoreString = `${score} / ${totalQuestionsInTest}`;
+      const percentage = (totalQuestionsInTest > 0 ? (score / totalQuestionsInTest) : 0).toFixed(4); // e.g., 0.7500
+
+      // This is the only call we need to make, as per server.js
+      try {
+          await fetchWithAuth(`${API_URL}/api/test/submit`, {
+              method: 'POST',
+              body: JSON.stringify({ percentage, scoreString })
+          });
+          
+          completionTitle.textContent = "Test Submitted!";
+          completionTitle.classList.remove('text-blue-600');
+          completionTitle.classList.add('text-green-600');
+          completionSubtitle.textContent = "Thank you for taking the assessment. Your results have been recorded.";
+          completionLoader.classList.add('hidden');
+          completionFinalMessage.classList.remove('hidden');
+      } catch (error) {
+          completionTitle.textContent = "Submission Error";
+          completionTitle.classList.add('text-red-600');
+          completionSubtitle.textContent = `Could not submit test: ${error.message}. Please contact support.`;
+          completionLoader.classList.add('hidden');
+      }
+    }
+
+    function endTest(isAutoSubmit = false) {
+        if (isTestEnded) return;
+        isTestEnded = true;
+        
+        clearInterval(overallTimerInterval);
+        clearInterval(questionTimerInterval);
+        
+        if (!isAutoSubmit) {
+          submissionModal.classList.add('hidden');
+        }
+        videoContainer.classList.add('hidden');
+        [cameraStream, micStream].forEach(stream => stream?.getTracks().forEach(track => track.stop()));
+        
+        switchView('completion-view');
+        performSubmission();
+    }
+
+    function makeDraggable(element, handle) {
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      if(handle) {
+        handle.onmousedown = dragMouseDown;
+      }
+
+      function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        element.style.top = (element.offsetTop - pos2) + "px";
+        element.style.left = (element.offsetLeft - pos1) + "px";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
+});
+</script>
+</body>
+</html>

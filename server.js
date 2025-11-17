@@ -1081,6 +1081,11 @@ app.get('/hat/test', (req, res) => {
     res.sendFile(path.join(__dirname, 'test_login.html'));
 });
 
+// --- NEW ROUTE: Serves the actual test-taking page ---
+app.get('/hat/test/take', (req, res) => {
+    res.sendFile(path.join(__dirname, 'test_taker.html'));
+});
+
 // --- NEW: Serves the central tool switcher page ---
 app.get('/hat', (req, res) => {
     res.sendFile(path.join(__dirname, 'hat.html'));

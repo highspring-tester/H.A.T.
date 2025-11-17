@@ -10,7 +10,7 @@
 <body class="flex items-center justify-center min-h-screen p-0">
 
   <div id="loginView" class="view active">
-    <div class="card">
+    <div class="card" id="test-card">
       <div class="card-header">
         <img class="card-logo" src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Highspring Logo">
         <h1>Assessment Login</h1>
@@ -30,7 +30,7 @@
         </form>
       </div>
       <div class="card-footer">
-        <button type="submit" form="loginForm" id="loginButton" class="btn btn-primary">
+        <button type="submit" form="loginForm" id="loginButton" class="btn btn-primary" style="background-color: var(--test-primary);">
           <span class="btn-text">Login</span>
           <div class="loader"></div>
         </button>
@@ -71,10 +71,9 @@
     // Check for existing token and redirect if test is in progress
     document.addEventListener('DOMContentLoaded', () => {
         const token = localStorage.getItem('testTakerToken');
-        const page = localStorage.getItem('testTakerPage');
-        if (token && page) {
+        if (token) {
             // If token exists, assume test is in progress and redirect immediately
-            window.location.href = `/${page}`; 
+            window.location.href = window.location.origin + '/hat/test/take'; 
         } else {
             // Enable button text and remove loading classes if no token is found
             toggleButtonLoading(LOGIN_BUTTON, false);
@@ -96,8 +95,8 @@
         const password = PASSWORD_INPUT.value;
         
         try {
-            // CRITICAL: Call the correct Test-Taker specific API route
-            const response = await fetch(`${API_URL}/api/hat/test/auth/login`, {
+            // CRITICAL: Call the correct Test-Taker specific API route (matches server.js)
+            const response = await fetch(`${API_URL}/api/test/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -111,12 +110,11 @@
             if (response.ok && data.success) {
                 // --- SUCCESS ---
                 
-                // Store the special 'test-taker' token and the page to redirect to
+                // Store the special 'test-taker' token
                 localStorage.setItem('testTakerToken', data.accessToken);
-                localStorage.setItem('testTakerPage', data.page);
                 
                 // Redirect the candidate immediately to the test page
-                window.location.href = `/${data.page}`;
+                window.location.href = window.location.origin + '/hat/test/take';
                 
             } else {
                 // --- FAILED ---
