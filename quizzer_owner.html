@@ -20,12 +20,12 @@
     
     // If no token, or if the role is not Owner, redirect.
     if (!quizzerToken || !quizzerUser) {
-      window.location.href = window.location.origin + '/quizzer';
+      window.location.href = window.location.origin + '/hat/quizzer';
     } else if (quizzerUser.role !== 'Owner') {
       // If a Manager or Editor logs in, they get redirected.
       localStorage.removeItem('quizzerToken');
       localStorage.removeItem('quizzerUser');
-      window.location.href = window.location.origin + '/quizzer';
+      window.location.href = window.location.origin + '/hat/quizzer';
     }
   </script>
 
@@ -288,7 +288,7 @@
         
         // Fetch data for project/programme selectors
         try {
-            const accessData = await fetchWithAuth(`${API_URL}/api/quizzer/access-data`);
+            const accessData = await fetchWithAuth(`${API_URL}/api/hat/quizzer/access-data`);
             renderProgrammeSelector(accessData); // For "Manage Question Bank"
         } catch (error) {
             renderProgrammeSelector({ error: error.message });
@@ -334,7 +334,7 @@
     function logout() { 
       localStorage.removeItem('quizzerToken');
       localStorage.removeItem('quizzerUser');
-      window.location.href = window.location.origin + '/quizzer';
+      window.location.href = window.location.origin + '/hat/quizzer';
     }
 
     async function loadCandidateFilters() {
@@ -357,7 +357,7 @@
         const searchTerm = document.getElementById('memberSearchTerm').value;
         const roleFilter = document.getElementById('memberRoleFilter').value;
         try {
-            const results = await fetchWithAuth(`${API_URL}/api/quizzer/users/search?searchTerm=${encodeURIComponent(searchTerm)}&roleFilter=${encodeURIComponent(roleFilter)}`);
+            const results = await fetchWithAuth(`${API_URL}/api/hat/quizzer/users/search?searchTerm=${encodeURIComponent(searchTerm)}&roleFilter=${encodeURIComponent(roleFilter)}`);
             renderMemberResults(results);
         } catch (error) {
             renderMemberResults({ error: error.message });
@@ -444,7 +444,7 @@
         toggleButtonLoading(button, true);
         showMessage('search-message', '', 'success', true);
         try {
-            const res = await fetchWithAuth(`${API_URL}/api/quizzer/users/resend-credentials`, {
+            const res = await fetchWithAuth(`${API_URL}/api/hat/quizzer/users/resend-credentials`, {
                 method: 'POST',
                 body: JSON.stringify({ email })
             });
@@ -513,7 +513,7 @@
         document.getElementById('project-title').textContent = activeProject.project; 
         document.getElementById('questionList').innerHTML = '<p>Loading...</p>';
         try {
-            const response = await fetchWithAuth(`${API_URL}/api/quizzer/questions/${activeProject.sheetName}`);
+            const response = await fetchWithAuth(`${API_URL}/api/hat/quizzer/questions/${activeProject.sheetName}`);
             renderQuestions(response);
         } catch (error) {
             renderQuestions({ error: error.message });
@@ -677,13 +677,13 @@
             let res;
             if (qId) { 
                 // UPDATE (PUT request)
-                res = await fetchWithAuth(`${API_URL}/api/quizzer/questions/${activeProject.sheetName}/${qId}`, {
+                res = await fetchWithAuth(`${API_URL}/api/hat/quizzer/questions/${activeProject.sheetName}/${qId}`, {
                 method: 'PUT',
                 body: JSON.stringify(qData)
                 });
             } else {
                 // ADD (POST request)
-                res = await fetchWithAuth(`${API_URL}/api/quizzer/questions/${activeProject.sheetName}`, {
+                res = await fetchWithAuth(`${API_URL}/api/hat/quizzer/questions/${activeProject.sheetName}`, {
                 method: 'POST',
                 body: JSON.stringify(qData)
                 });
@@ -743,7 +743,7 @@
     async function executeDelete() { 
         if (!questionIdToDelete) return; 
         try {
-          const res = await fetchWithAuth(`${API_URL}/api/quizzer/questions/${activeProject.sheetName}/${questionIdToDelete}`, {
+          const res = await fetchWithAuth(`${API_URL}/api/hat/quizzer/questions/${activeProject.sheetName}/${questionIdToDelete}`, {
             method: 'DELETE'
           });
           if (res.success) { 
@@ -812,7 +812,7 @@
         }; 
         
         try {
-            const res = await fetchWithAuth(`${API_URL}/api/quizzer/users/register`, {
+            const res = await fetchWithAuth(`${API_URL}/api/hat/quizzer/users/register`, {
                 method: 'POST',
                 body: JSON.stringify(userData)
             });
@@ -822,7 +822,7 @@
                 document.getElementById('registerForm').reset();
                 handleRoleChange();
                 // Refresh all data
-                const accessData = await fetchWithAuth(`${API_URL}/api/quizzer/access-data`);
+                const accessData = await fetchWithAuth(`${API_URL}/api/hat/quizzer/access-data`);
                 renderProgrammeSelector(accessData);
                 const programmeData = await fetchWithAuth(`${API_URL}/api/programmes`);
                 setupRegistrationFormDatalists(programmeData.data);

@@ -18,17 +18,17 @@
     
     // If no token, or if the role is not Owner, redirect.
     if (!enrollmentToken || !enrollmentUser) {
-      window.location.href = window.location.origin + '/enrollment';
+      window.location.href = window.location.origin + '/hat/enrollment';
     } else if (enrollmentUser.role !== 'Owner') {
       // If a TA or Manager somehow gets here, send them back to their dashboard.
       if (enrollmentUser.role === 'TA') {
-        window.location.href = window.location.origin + '/enrollment/ta';
+        window.location.href = window.location.origin + '/hat/enrollment/ta';
       } else if (enrollmentUser.role === 'Manager') {
-        window.location.href = window.location.origin + '/enrollment/manager';
+        window.location.href = window.location.origin + '/hat/enrollment/manager';
       } else {
         localStorage.removeItem('enrollmentToken');
         localStorage.removeItem('enrollmentUser');
-        window.location.href = window.location.origin + '/enrollment';
+        window.location.href = window.location.origin + '/hat/enrollment';
       }
     }
   </script>
@@ -199,7 +199,7 @@
     function logout() {
       localStorage.removeItem('enrollmentToken');
       localStorage.removeItem('enrollmentUser');
-      window.location.href = window.location.origin + '/enrollment';
+      window.location.href = window.location.origin + '/hat/enrollment';
     }
     
     function toggleButtonLoading(button, isLoading) {
@@ -293,7 +293,7 @@
             
             try {
                 // This API route is correct, as Owners are allowed to use it
-                const res = await fetchWithAuth(`${API_URL}/api/enrollment/tas/onboard`, {
+                const res = await fetchWithAuth(`${API_URL}/api/hat/enrollment/tas/onboard`, {
                     method: 'POST',
                     body: JSON.stringify(userData)
                 });
@@ -323,7 +323,7 @@
             };
             
             try {
-                const res = await fetchWithAuth(`${API_URL}/api/enrollment/candidates/onboard`, {
+                const res = await fetchWithAuth(`${API_URL}/api/hat/enrollment/candidates/onboard`, {
                     method: 'POST',
                     body: JSON.stringify(candidateData)
                 });
@@ -345,7 +345,7 @@
             const searchTerm = document.getElementById('memberSearchTerm').value;
             
             try {
-                const res = await fetchWithAuth(`${API_URL}/api/enrollment/users/search?role=${role}&searchTerm=${searchTerm}`);
+                const res = await fetchWithAuth(`${API_URL}/api/hat/enrollment/users/search?role=${role}&searchTerm=${searchTerm}`);
                 populateMemberResults(res.data);
                 if (!res.success) showMessage('search-message', res.message, 'error');
             } catch (err) {
@@ -485,7 +485,7 @@
     async function resendMemberCreds(email, button) {
         toggleButtonLoading(button, true);
         try {
-            const res = await fetchWithAuth(`${API_URL}/api/enrollment/users/resend-credentials`, {
+            const res = await fetchWithAuth(`${API_URL}/api/hat/enrollment/users/resend-credentials`, {
                 method: 'POST',
                 body: JSON.stringify({ email: email })
             });

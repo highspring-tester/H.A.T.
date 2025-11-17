@@ -87,7 +87,7 @@
         
         try {
             // CRITICAL: Call the correct Enrollment-specific API route
-            const response = await fetch(`${API_URL}/api/enrollment/auth/login`, {
+            const response = await fetch(`${API_URL}/api/hat/enrollment/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email, password: password }) // Backend expects 'email'
@@ -106,13 +106,13 @@
                 // Redirect to the correct dashboard based on role
                 switch (data.user.role) {
                     case 'TA':
-                        window.location.href = window.location.origin + '/enrollment/ta';
+                        window.location.href = window.location.origin + '/hat/enrollment/ta';
                         break;
                     case 'Manager':
-                        window.location.href = window.location.origin + '/enrollment/manager'; // We will build this next
+                        window.location.href = window.location.origin + '/hat/enrollment/manager'; // We will build this next
                         break;
                     case 'Owner':
-                        window.location.href = window.location.origin + '/enrollment/owner'; // And this one after
+                        window.location.href = window.location.origin + '/hat/enrollment/owner'; // And this one after
                         break;
                     default:
                         showMessage('login-message', 'Login successful, but role is unknown.', 'error');
@@ -140,13 +140,13 @@
             // If already logged in, redirect them immediately
             switch (user.role) {
                 case 'TA':
-                    window.location.href = window.location.origin + '/enrollment/ta';
+                    window.location.href = window.location.origin + '/hat/enrollment/ta';
                     break;
                 case 'Manager':
-                    window.location.href = window.location.origin + '/enrollment/manager';
+                    window.location.href = window.location.origin + '/hat/enrollment/manager';
                     break;
                 case 'Owner':
-                    window.location.href = window.location.origin + '/enrollment/owner';
+                    window.location.href = window.location.origin + '/hat/enrollment/owner';
                     break;
             }
         } else {

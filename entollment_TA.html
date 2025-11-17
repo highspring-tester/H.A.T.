@@ -19,14 +19,14 @@
     
     // If no token, or if the user is not a TA, redirect to login
     if (!enrollmentToken || !enrollmentUser) {
-      window.location.href = '/enrollment';
+      window.location.href = '/hat/enrollment';
     } else if (enrollmentUser.role !== 'TA') {
       // If a Manager or Owner logs in, they shouldn't see the TA page.
       // We'll redirect them to their own dashboard (once we build it).
       // For now, we'll just log them out or send to login.
       localStorage.removeItem('enrollmentToken');
       localStorage.removeItem('enrollmentUser');
-      window.location.href = '/enrollment';
+      window.location.href = '/hat/enrollment';
     }
   </script>
 
@@ -105,7 +105,7 @@
       // Clear the login token and redirect to the login page
       localStorage.removeItem('enrollmentToken');
       localStorage.removeItem('enrollmentUser');
-      window.location.href = '/enrollment';
+      window.location.href = '/hat/enrollment';
     }
     
     function toggleButtonLoading(button, isLoading) {
@@ -202,7 +202,7 @@
             };
             
             try {
-                const res = await fetchWithAuth(`${API_URL}/api/enrollment/candidates/onboard`, {
+                const res = await fetchWithAuth(`${API_URL}/api/hat/enrollment/candidates/onboard`, {
                     method: 'POST',
                     body: JSON.stringify(candidateData)
                 });

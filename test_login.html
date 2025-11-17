@@ -97,7 +97,7 @@
         
         try {
             // CRITICAL: Call the correct Test-Taker specific API route
-            const response = await fetch(`${API_URL}/api/test/auth/login`, {
+            const response = await fetch(`${API_URL}/api/hat/test/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 

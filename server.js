@@ -1039,51 +1039,56 @@ app.get('/api/quizzes', authenticateToken, async (req, res) => {
 // --- Server Routes for HTML ---
 // CRITICAL: We need this to serve the files
 
-app.get('/enrollment', (req, res) => {
+app.get('/hat/enrollment', (req, res) => {
     res.sendFile(path.join(__dirname, 'enrollment_login.html'));
 });
 
 // This route serves the TA dashboard
-app.get('/enrollment/ta', (req, res) => {
+app.get('/hat/enrollment/ta', (req, res) => {
     res.sendFile(path.join(__dirname, 'enrollment_ta.html')); 
 });
 
 // This route serves the Manager dashboard
-app.get('/enrollment/manager', (req, res) => {
+app.get('/hat/enrollment/manager', (req, res) => {
     res.sendFile(path.join(__dirname, 'enrollment_manager.html'));
 });
 
 // --- NEW ROUTE: Serves the Owner dashboard ---
-app.get('/enrollment/owner', (req, res) => {
+app.get('/hat/enrollment/owner', (req, res) => {
     res.sendFile(path.join(__dirname, 'enrollment_owner.html'));
 });
 
-app.get('/quizzer', (req, res) => {
+app.get('/hat/quizzer', (req, res) => {
     res.sendFile(path.join(__dirname, 'quizzer_login.html'));
 });
 
 // --- NEW ROUTE: Serves the Quizzer Editor dashboard ---
-app.get('/quizzer/editor', (req, res) => {
+app.get('/hat/quizzer/editor', (req, res) => {
     res.sendFile(path.join(__dirname, 'quizzer_editor.html'));
 });
 
 // --- UPDATED ROUTE: Serves the Quizzer Manager dashboard ---
-app.get('/quizzer/manager', (req, res) => {
+app.get('/hat/quizzer/manager', (req, res) => {
     res.sendFile(path.join(__dirname, 'quizzer_manager.html'));
 });
 
 // --- NEW ROUTE: Serves the Quizzer Owner dashboard ---
-app.get('/quizzer/owner', (req, res) => {
+app.get('/hat/quizzer/owner', (req, res) => {
     res.sendFile(path.join(__dirname, 'quizzer_owner.html'));
 });
 
-app.get('/test', (req, res) => {
+app.get('/hat/test', (req, res) => {
     res.sendFile(path.join(__dirname, 'test_login.html'));
 });
 
-// Default root path should redirect to the Enrollment App
+// --- NEW: Serves the central tool switcher page ---
+app.get('/hat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'hat.html'));
+});
+
+// Default root path should redirect to the new switcher app
 app.get('/', (req, res) => {
-    res.redirect('/enrollment');
+    res.redirect('/hat');
 });
 
 // --- Server Initialization ---
