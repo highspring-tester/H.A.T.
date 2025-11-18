@@ -182,7 +182,7 @@ label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; c
     /* Test login card is generally lighter than the dark theme I had applied previously,
        but the candidate login page structure is very similar to the admin card. 
        Re-using .card but with specific overrides for consistency. */
-    max-width: 550px;
+    max-width: 850px;
     background-color: var(--admin-card-bg);
     color: var(--admin-text-color);
 }
