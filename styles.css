@@ -307,6 +307,25 @@ textarea.input-field { min-height: 80px; resize: vertical; }
 .table-header { font-weight: 600; border-bottom: 2px solid var(--border-color); color: #6c757d; font-size: 14px; background-color: #f8f9fa; }
 .table-row { border-bottom: 1px solid var(--border-color); }
 .btn-sm { padding: 5px 10px; font-size: 12px; width: auto; }
+
+/* --- Hub Page Styles --- */
+.tool-card-container {
+  margin-bottom: 20px;
+}
+.btn.tool-link {
+  text-decoration: none; /* Ensure no underline */
+  display: block; /* Make it block to take full width */
+  width: 100%;
+  box-sizing: border-box; /* Include padding in width */
+}
+.tool-card-desc {
+  font-size: 14px;
+  color: var(--secondary-color);
+  text-align: center;
+  margin-top: 8px; /* Space between button and text */
+  margin-bottom: 0;
+}
+
 /* Fix for small screens */
 @media (max-width: 768px) {
   .member-search-grid, .candidate-search-grid { grid-template-columns: 1fr; }
