@@ -314,7 +314,6 @@ textarea.input-field { min-height: 80px; resize: vertical; }
 }
 .btn.tool-link {
   text-decoration: none; /* Ensure no underline */
-  display: block; /* Make it block to take full width */
   width: 100%;
   box-sizing: border-box; /* Include padding in width */
 }
