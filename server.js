@@ -192,6 +192,74 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
 
+// --- !!! TEMPORARY SEED ROUTE !!! ---
+// This route is for one-time setup to create the first admin users.
+// It should be REMOVED after its first successful use.
+app.post('/api/seed/initial-admins', async (req, res) => {
+  try {
+    const seedPassword = "Password123"; // Easy to remember
+    const hashedSeedPassword = await bcrypt.hash(seedPassword, 10);
+
+    // 1. Create Enrollment Owner
+    const enrollmentEmail = 'owner@enrollment.com';
+    let enrollmentOwner = await EnrollmentUser.findOne({ email: enrollmentEmail });
+    if (!enrollmentOwner) {
+      enrollmentOwner = new EnrollmentUser({
+        firstName: 'Admin',
+        lastName: 'Owner (Enrollment)',
+        email: enrollmentEmail,
+        password: hashedSeedPassword,
+        role: 'Owner'
+      });
+      await enrollmentOwner.save();
+    }
+
+    // 2. Create Quizzer Owner
+    const quizzerEmail = 'owner@quizzer.com';
+    const quizzerUsername = 'quizzer.owner';
+    let quizzerOwner = await QuizzerUser.findOne({ email: quizzerEmail });
+    if (!quizzerOwner) {
+      quizzerOwner = new QuizzerUser({
+        firstName: 'Admin',
+        lastName: 'Owner (Quizzer)',
+        email: quizzerEmail,
+        username: quizzerUsername,
+        password: hashedSeedPassword,
+        role: 'Owner',
+        programme: 'All', // Owners can see all
+        project: 'All'
+      });
+      await quizzerOwner.save();
+    }
+
+    // Return the credentials to be displayed
+    res.status(201).json({
+      success: true,
+      message: 'Initial admin users created (or already existed).',
+      credentials: [
+        {
+          portal: 'Enrollment Portal',
+          email: enrollmentEmail,
+          password: seedPassword,
+          role: 'Owner'
+        },
+        {
+          portal: 'Quizzer Portal',
+          username: quizzerUsername,
+          password: seedPassword,
+          role: 'Owner'
+        }
+      ]
+    });
+
+  } catch (error) {
+    console.error('Seed error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create seed users: ' + error.message });
+  }
+});
+// --- !!! END TEMPORARY SEED ROUTE !!! ---
+
+
 // --- AUTH ROUTES (SEPARATED) ---
 
 // Enrollment App Login
@@ -441,177 +509,6 @@ app.post('/api/enrollment/users/resend-credentials', authenticateToken, authoriz
       to: email, subject: subject,
       html: emailBody,
       from: `"Highspring Recruitment" <${process.env.MAIL_USER}>`,
-    });
-    res.json({ success: true, message: `New credentials sent to ${email}.` });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
-});
-
-
-app.post('/api/enrollment/candidates/onboard', authenticateToken, authorize(['TA', 'Manager', 'Owner'], 'enrollment'), async (req, res) => {
-  const { firstName, lastName, email, contactNumber, program, project } = req.body;
-  const ta = req.user; // User (TA, Manager, or Owner) is in the token
-  try {
-    let candidate = await Candidate.findOne({ email: email.toLowerCase() });
-    if (candidate) return res.status(409).json({ error: 'Candidate with this email already exists' });
-
-    const username = email.toLowerCase();
-    const password = generateRandomPassword(8);
-    const hashedPassword = await bcrypt.hash(password, 10);
-    candidate = new Candidate({
-      onboardedByTaName: ta.fullName, 
-      onboardedByTaEmail: ta.email,
-      firstName, lastName,
-      email: email.toLowerCase(),
-      contactNumber, program, project,
-      username,
-      password: hashedPassword,
-      status: 'Mail Sent'
-    });
-    await candidate.save();
-    
-    const subject = "Candidate Assessment Test | Highspring India";
-    const emailBody = `
-      <!DOCTYPE html>
-      <html>
-        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f7f7f7;">
-          <table align="center" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden;">
-            <tr><td align="center" style="padding:20px; background-color:#062842;"><img src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Company Logo" width="150" style="display:block;"></td></tr>
-            <tr>
-              <td style="padding:30px; color:#333333; font-size:15px; line-height:1.6;">
-                <h2 style="color:#002b5c; margin-top:0;">Hi, ${firstName} ${lastName},</h2>
-                <p>Greetings from <b>Highspring India</b>! You have been shortlisted to take the <b>Candidate Assessment Test</b>. Below are your login credentials and instructions.</p>
-                <p>🧾 <b>Login Credentials</b><br>Username: <b>${username}</b><br>Password: <b>${password}</b></p>
-                <p>📝 <b>Test Instructions</b><br>... (Your instructions here) ...</p>
-                <p style="margin-top:20px;">🚀 <b>Access the Test:</b><br><a href="${process.env.APP_URL || '#'}/test" style="color:#002b5c; text-decoration:none; font-weight:bold;">Start Assessment Test</a><br><b>Test Time = 20 Minutes</b></p>
-              </td>
-            </tr>
-            <tr><td align="center" style="padding:20px; background-color:#f1f1f1; font-size:13px; color:#555;">© 2025 Highspring India</td></tr>
-          </table>
-        </body>
-      </html>`;
-    await mailTransport.sendMail({
-      to: email, subject: subject,
-      html: emailBody,
-      from: `"Highspring Recruitment" <${process.env.MAIL_USER}>`,
-    });
-    res.status(201).json({ success: true, message: "Candidate onboarded and assessment email sent successfully!" });
-  } catch (error) {
-    console.error('Onboard Candidate error:', error);
-    res.status(500).json({ success: false, message: 'Onboarding failed: ' + error.message });
-  }
-});
-
-
-// --- QUIZZER APP ROUTES ---
-// (Protected with 'quizzer' scope)
-app.post('/api/quizzer/users/register', authenticateToken, authorize(['Owner', 'Manager'], 'quizzer'), async (req, res) => {
-  const { firstName, lastName, email, role, programme, project } = req.body;
-  if (!['Editor', 'Manager', 'Owner'].includes(role)) {
-    return res.status(400).json({ error: 'Invalid role for this application' });
-  }
-    // Only an Owner can create another Owner
-  if (role === 'Owner' && req.user.role !== 'Owner') {
-    return res.status(403).json({ error: 'Forbidden: Only Owners can create other Owners.' });
-  }
-  try {
-    if (programme && project) {
-      await Programme.findOneAndUpdate(
-        { name: programme },
-        { $addToSet: { projects: project } }, 
-        { upsert: true } 
-      );
-    }
-    let user = await QuizzerUser.findOne({ email: email.toLowerCase() });
-    if (user) return res.status(409).json({ error: 'User with this email already exists' });
-    
-    const password = generateRandomPassword(8);
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const username = `${firstName.toLowerCase()}.${lastName.toLowerCase().charAt(0)}`;
-
-    user = new QuizzerUser({
-      firstName, lastName,
-      email: email.toLowerCase(),
-      username: username, 
-      password: hashedPassword,
-      role, programme, project
-    });
-    await user.save();
-
-    const fullName = `${firstName} ${lastName}`.trim();
-    const subject = "Your Question Bank Credentials";
-    const emailBody = `
-      <!DOCTYPE html>
-      <html>
-        <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f7f7f7;">
-          <table align="center" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; border: 1px solid #e0e0e0;">
-            <tr><td align="center" style="padding:20px; background-color:#062842;"><img src="https://image2url.com/images/1759863659854-385aa92d-a47f-4073-8196-7079618a731d.png" alt="Company Logo" width="150" style="display:block;"></td></tr>
-            <tr>
-              <td style="padding:30px; color:#333333; font-size:15px; line-height:1.6;">
-                <h2 style="color:#002b5c; margin-top:0;">Hi, ${fullName}!</h2>
-                <p>You can now access the Quizzer Admin Tool using the credentials below.</p>
-                <p>Your assigned role is: <b>${role}</b></p>
-                <p style="padding: 15px; background-color: #f1f1f1; border-radius: 5px;">
-                  🧾 <b>Login Credentials</b><br>
-                  Username: <b>${username}</b><br>
-                  Password: <b>${password}</b>
-                </p>
-                <p style="margin-top:20px;">🚀 <b>Access the Portal:</b><br><a href="${process.env.APP_URL || '#'}/quizzer" style="color:#002b5c; text-decoration:none; font-weight:bold;">Click Here to Login</a></p>
-              </td>
-            </tr>
-            <tr><td align="center" style="padding:20px; background-color:#f1f1f1; font-size:13px; color:#555;">© 2025 Highspring India</td></tr>
-          </table>
-        </body>
-      </html>`;
-    
-    await mailTransport.sendMail({
-      to: email, subject: subject,
-      html: emailBody,
-      from: `"Highspring Management Team" <${process.env.MAIL_USER}>`,
-    });
-    res.status(201).json({ success: true, message: 'New user registered successfully!' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to register user: ' + error.message });
-  }
-});
-
-app.get('/api/quizzer/users/search', authenticateToken, authorize(['Owner', 'Manager'], 'quizzer'), async (req, res) => {
-  const { searchTerm, roleFilter } = req.query;
-  let query = {};
-  if (roleFilter) query.role = roleFilter;
-  if (searchTerm) {
-    const term = searchTerm.toLowerCase();
-    query.$or = [
-      { firstName: { $regex: term, $options: 'i' } },
-      { lastName: { $regex: term, $options: 'i' } },
-      { email: { $regex: term, $options: 'i' } }
-    ];
-  }
-  try {
-    const users = await QuizzerUser.find(query).select('-password');
-    res.json(users);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/quizzer/users/resend-credentials', authenticateToken, authorize(['Owner', 'Manager'], 'quizzer'), async (req, res) => {
-  const { email } = req.body;
-  try {
-    const user = await QuizzerUser.findOne({ email: email.toLowerCase() });
-    if (!user) return res.status(404).json({ success: false, message: 'Member not found' });
-    
-    const newPassword = generateRandomPassword(8);
-    user.password = await bcrypt.hash(newPassword, 10);
-    await user.save();
-    
-    const subject = "Your Question Bank Credentials (Resent)";
-    const emailBody = `... (HTML from your Code.gs 'resendMemberCredentials') ...`;
-    await mailTransport.sendMail({
-      to: email, subject: subject,
-      html: emailBody.replace('${fullName}', `${user.firstName} ${user.lastName}`).replace('${role}', user.role).replace('${username}', user.username).replace('${password}', newPassword),
-      from: `"Highspring Management Team" <${process.env.MAIL_USER}>`,
     });
     res.json({ success: true, message: `New credentials sent to ${email}.` });
   } catch (e) {

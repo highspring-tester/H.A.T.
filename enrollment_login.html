@@ -34,6 +34,14 @@
           <span class="btn-text">Login</span>
           <div class="loader"></div>
         </button>
+        
+        <!-- --- TEMPORARY SEED BUTTON --- -->
+        <button id="seedButton" class="btn" style="background-color: #ffc107; color: #333; margin-top: 10px;">
+          <span class="btn-text">Create Initial Admins</span>
+          <div class="loader"></div>
+        </button>
+        <!-- --- END TEMPORARY BUTTON --- -->
+
       </div>
     </div>
   </div>
@@ -46,6 +54,7 @@
     const MESSAGE_BOX = document.getElementById('login-message');
     const USERNAME_INPUT = document.getElementById('username'); // This is the email field
     const PASSWORD_INPUT = document.getElementById('password');
+    const SEED_BUTTON = document.getElementById('seedButton'); // <-- New Selector
 
     // --- Helper Functions (from your original file) ---
 
@@ -130,6 +139,52 @@
         }
     }
 
+    // --- !!! NEW SEED FUNCTION !!! ---
+    async function handleSeedAdmins() {
+      hideMessage('login-message');
+      toggleButtonLoading(SEED_BUTTON, true);
+      
+      try {
+        const response = await fetch(`${API_URL}/api/seed/initial-admins`, {
+          method: 'POST',
+        });
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          // Format credentials for display
+          let credsText = "SUCCESS! Use these credentials:\n\n";
+          data.credentials.forEach(c => {
+            credsText += `--- ${c.portal} ---\n`;
+            credsText += `Username: ${c.email || c.username}\n`;
+            credsText += `Password: ${c.password}\n\n`;
+          });
+          
+          // Use the message box to show credentials
+          const box = document.getElementById('login-message');
+          box.innerHTML = `
+            <strong>${data.message}</strong><br>
+            <pre style="text-align: left; background: #eee; padding: 10px; margin-top: 10px; border-radius: 4px;">${credsText.replace(/\n/g, '<br>')}</pre>
+          `;
+          box.className = 'message-box success';
+          box.style.display = 'block';
+
+          // Disable the seed button permanently after success
+          SEED_BUTTON.disabled = true;
+          SEED_BUTTON.style.backgroundColor = '#6c757d'; // Gray out
+          SEED_BUTTON.querySelector('.btn-text').textContent = 'Admins Created';
+
+        } else {
+          throw new Error(data.message || 'Failed to create admins.');
+        }
+
+      } catch (error) {
+        showMessage('login-message', error.message, 'error');
+        toggleButtonLoading(SEED_BUTTON, false);
+      }
+    }
+    // --- !!! END SEED FUNCTION !!! ---
+
+
     // --- Initializer ---
     document.addEventListener('DOMContentLoaded', () => {
         // Check if user is already logged in (e.g., from a previous session)
@@ -152,11 +207,17 @@
         } else {
             // Not logged in, so enable the login button
             toggleButtonLoading(LOGIN_BUTTON, false);
+            toggleButtonLoading(SEED_BUTTON, false); // Also enable seed button
         }
 
         // Add the listener to the form
         if (LOGIN_FORM) {
             LOGIN_FORM.addEventListener('submit', handleLoginSubmit);
+        }
+
+        // Add listener for new seed button
+        if (SEED_BUTTON) {
+            SEED_BUTTON.addEventListener('click', handleSeedAdmins);
         }
     });
   </script>

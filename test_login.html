@@ -33,6 +33,14 @@
           <span class="btn-text">Login</span>
           <div class="loader"></div>
         </button>
+
+        <!-- --- TEMPORARY SEED BUTTON --- -->
+        <button id="seedButton" class="btn" style="background-color: #ffc107; color: #333; margin-top: 10px;">
+          <span class="btn-text">Create Initial Admins</span>
+          <div class="loader"></div>
+        </button>
+        <!-- --- END TEMPORARY BUTTON --- -->
+
       </div>
     </div>
   </div>
@@ -45,6 +53,7 @@
     const MESSAGE_BOX = document.getElementById('login-message');
     const USERNAME_INPUT = document.getElementById('username');
     const PASSWORD_INPUT = document.getElementById('password');
+    const SEED_BUTTON = document.getElementById('seedButton'); // <-- New Selector
 
     // --- Helper Functions ---
 
@@ -55,8 +64,12 @@
       }
     }
 
-    function showMessage(message, type) {
-      MESSAGE_BOX.textContent = message;
+    function showMessage(message, type, isHtml = false) {
+      if (isHtml) {
+        MESSAGE_BOX.innerHTML = message;
+      } else {
+        MESSAGE_BOX.textContent = message;
+      }
       MESSAGE_BOX.className = 'message-box ' + type;
       MESSAGE_BOX.style.display = message ? 'block' : 'none';
     }
@@ -76,10 +89,16 @@
         } else {
             // Enable button text and remove loading classes if no token is found
             toggleButtonLoading(LOGIN_BUTTON, false);
+            toggleButtonLoading(SEED_BUTTON, false); // <-- Enable seed button
             LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
         }
         if (LOGIN_FORM) {
             LOGIN_FORM.addEventListener('submit', handleLoginSubmit);
+        }
+
+        // Add listener for new seed button
+        if (SEED_BUTTON) {
+            SEED_BUTTON.addEventListener('click', handleSeedAdmins);
         }
     });
 
@@ -127,6 +146,49 @@
             LOGIN_BUTTON.querySelector('.btn-text').textContent = 'Login';
         }
     }
+
+    // --- !!! NEW SEED FUNCTION !!! ---
+    async function handleSeedAdmins() {
+      hideMessage();
+      toggleButtonLoading(SEED_BUTTON, true);
+      
+      try {
+        const response = await fetch(`${API_URL}/api/seed/initial-admins`, {
+          method: 'POST',
+        });
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          // Format credentials for display
+          let credsText = "SUCCESS! Use these credentials:\n\n";
+          data.credentials.forEach(c => {
+            credsText += `--- ${c.portal} ---\n`;
+            credsText += `Username: ${c.email || c.username}\n`;
+            credsText += `Password: ${c.password}\n\n`;
+          });
+          
+          // Use the message box to show credentials (as HTML)
+          const messageHtml = `
+            <strong>${data.message}</strong><br>
+            <pre style="text-align: left; background: #eee; padding: 10px; margin-top: 10px; border-radius: 4px;">${credsText.replace(/\n/g, '<br>')}</pre>
+          `;
+          showMessage(messageHtml, 'success', true); // Pass true for HTML
+
+          // Disable the seed button permanently after success
+          SEED_BUTTON.disabled = true;
+          SEED_BUTTON.style.backgroundColor = '#6c757d'; // Gray out
+          SEED_BUTTON.querySelector('.btn-text').textContent = 'Admins Created';
+
+        } else {
+          throw new Error(data.message || 'Failed to create admins.');
+        }
+
+      } catch (error) {
+        showMessage(error.message, 'error');
+        toggleButtonLoading(SEED_BUTTON, false);
+      }
+    }
+    // --- !!! END SEED FUNCTION !!! ---
   </script>
 </body>
 </html>
